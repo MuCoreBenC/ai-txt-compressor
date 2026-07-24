@@ -1,0 +1,30 @@
+# Rust 构建产物
+compressor/target/
+**/*.rlib
+**/*.rmeta
+**/*.dylib
+
+# 运行时日志与 PID
+.backend.log
+.frontend.log
+.start.pids
+*.log
+*.pid
+
+# TRAE IDE 工作区
+.trae/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 临时文件
+*.tmp
+*.bak

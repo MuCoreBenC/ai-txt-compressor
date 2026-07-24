@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI.TXT · 拆分 + 深度压缩</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Major+Mono+Display&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0a0c0d;
+    --bg-2:#0e1112;
+    --surface:#14181b;
+    --surface-2:#181d21;
+    --accent:#4dffb4;
+    --accent-dim:#2aa37a;
+    --accent-2:#ffc857;
+    --danger:#ff6b6b;
+    --text:#e8eaea;
+    --muted:#7f868a;
+    --border:#23292d;
+    --border-soft:#1a1f22;
+    --scanline:rgba(255,255,255,.018);
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --display:"Major Mono Display",var(--mono);
+  }
+  [data-theme="light"]{
+    --bg:#f5f4f0; --bg-2:#ffffff; --surface:#ffffff; --surface-2:#f1efea;
+    --accent:#159f6b; --accent-dim:#2aa37a; --accent-2:#b8741a;
+    --danger:#d94545; --text:#1c1f1d; --muted:#6b716e;
+    --border:#e0ddd5; --border-soft:#eceae4; --scanline:rgba(0,0,0,.025);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 700px at 80% -10%, rgba(77,255,180,.06), transparent 60%),
+      radial-gradient(900px 600px at 0% 110%, rgba(255,200,87,.04), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:15px;
+    line-height:1.55;
+    min-height:100vh;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
+    background:repeating-linear-gradient(to bottom,
+      rgba(255,255,255,.018) 0px, rgba(255,255,255,.018) 1px,
+      transparent 1px, transparent 3px);
+    mix-blend-mode:overlay;
+  }
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:.04;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  .wrap{max-width:1180px;margin:0 auto;padding:42px 28px 80px;position:relative;z-index:1}
+
+  /* ===== Header ===== */
+  header.top{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
+    padding-bottom:26px;border-bottom:1px solid var(--border);margin-bottom:34px;flex-wrap:wrap;
+  }
+  .brand{display:flex;flex-direction:column;gap:6px}
+  .brand .sig{display:flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.32em;color:var(--accent);text-transform:uppercase}
+  .brand .sig .dot{
+    width:9px;height:9px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px var(--accent),0 0 22px rgba(77,255,180,.5);
+    animation:pulse 1.8s ease-in-out infinite;
+  }
+  .brand .sig .dot.off{background:var(--danger);box-shadow:0 0 10px var(--danger);animation:none}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+  .brand h1{
+    font-family:var(--display);font-weight:400;
+    font-size:clamp(34px,5.6vw,62px);line-height:.95;margin:6px 0 0;
+    letter-spacing:.02em;color:var(--text);
+  }
+  .brand h1 .cur{display:inline-block;width:.5ch;color:var(--accent);animation:blink 1.05s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .brand .sub{color:var(--muted);font-size:13px;letter-spacing:.04em;margin-top:8px;max-width:52ch}
+
+  .meta-strip{
+    display:flex;flex-direction:column;align-items:flex-end;gap:6px;
+    font-size:11px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;
+  }
+  .meta-strip .lat{color:var(--accent-2);font-weight:600}
+  .meta-strip .model{color:var(--accent-2);font-weight:600}
+  .meta-strip .hint-line{font-size:10px;letter-spacing:.14em;color:var(--danger);max-width:30ch;text-align:right;display:none}
+  .meta-strip .hint-line.show{display:block}
+  .theme-toggle{
+    font-family:var(--mono);background:transparent;color:var(--muted);
+    border:1px solid var(--border);border-radius:3px;
+    padding:6px 12px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:7px;
+  }
+  .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* ===== Panels ===== */
+  .panel{
+    background:linear-gradient(180deg,var(--surface) 0%,var(--surface-2) 100%);
+    border:1px solid var(--border);border-radius:4px;position:relative;
+  }
+  .panel::before{
+    content:"";position:absolute;inset:0;border-radius:4px;pointer-events:none;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .panel-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:13px 18px;border-bottom:1px solid var(--border-soft);
+    font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);
+  }
+  .panel-head .tag{color:var(--accent);font-weight:600}
+  .panel-body{padding:18px}
+
+  /* ===== Input area ===== */
+  .input-wrap{position:relative}
+  .input-wrap.expanded textarea#src{height:60vh;min-height:300px}
+  textarea#src{
+    width:100%;height:130px;min-height:130px;resize:none;
+    background:var(--bg-2);color:var(--text);
+    border:1px solid var(--border);border-radius:3px;
+    padding:40px 18px 16px;
+    font-family:var(--mono);font-size:14.5px;line-height:1.65;
+    outline:none;overflow:auto;
+    transition:height .2s ease,border-color .15s,box-shadow .15s;
+  }
+  textarea#src:focus{
+    border-color:var(--accent-dim);
+    box-shadow:0 0 0 3px rgba(77,255,180,.08),inset 0 0 30px rgba(77,255,180,.03);
+  }
+  textarea#src::placeholder{color:#525a5e}
+  .ta-tools{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:2}
+  .ta-tool{
+    font-family:var(--mono);background:var(--surface-2);color:var(--muted);
+    border:1px solid var(--border);border-radius:3px;
+    padding:5px 10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    cursor:pointer;transition:all .14s;
+  }
+  .ta-tool:hover{border-color:var(--accent);color:var(--accent)}
+  .count-line{
+    position:absolute;right:14px;bottom:10px;
+    font-size:11px;letter-spacing:.14em;color:var(--muted);
+    background:var(--bg-2);padding:2px 8px;border-radius:2px;pointer-events:none;
+  }
+  .count-line b{color:var(--accent-2);font-weight:600}
+
+  /* ===== Controls ===== */
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:22px;align-items:start}
+  @media(max-width:760px){.controls{grid-template-columns:1fr}}
+  .group{display:flex;flex-direction:column;gap:9px}
+  .group > .label{font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--muted)}
+  .seg{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .seg button{
+    font-family:var(--mono);background:var(--bg-2);color:var(--text);
+    border:1px solid var(--border);border-radius:3px;
+    padding:9px 16px;font-size:13px;letter-spacing:.06em;cursor:pointer;transition:all .14s;
+  }
+  .seg button:hover{border-color:var(--accent-dim);color:var(--accent)}
+  .seg button.active{
+    background:rgba(77,255,180,.10);border-color:var(--accent);color:var(--accent);
+    box-shadow:0 0 14px rgba(77,255,180,.12);
+  }
+  .seg input[type=number]{
+    width:108px;background:var(--bg-2);color:var(--text);
+    border:1px solid var(--border);border-radius:3px;
+    padding:9px 12px;font-family:var(--mono);font-size:13px;outline:none;
+  }
+  .seg input[type=number]:focus{border-color:var(--accent-dim)}
+  .seg input[type=number]:disabled{opacity:.4;cursor:not-allowed}
+  .hint{font-size:11px;color:var(--muted);letter-spacing:.04em}
+  .hint.err{color:var(--danger)}
+
+  .checks{display:flex;flex-direction:column;gap:8px}
+  .check{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);cursor:pointer;user-select:none}
+  .check input{
+    appearance:none;-webkit-appearance:none;
+    width:16px;height:16px;border:1px solid var(--border);background:var(--bg-2);
+    border-radius:2px;cursor:pointer;position:relative;transition:all .14s;flex-shrink:0;
+  }
+  .check input:checked{background:var(--accent);border-color:var(--accent)}
+  .check input:checked::after{
+    content:"";position:absolute;left:4px;top:1px;width:5px;height:9px;
+    border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(45deg);
+  }
+  .check input:disabled{opacity:.35;cursor:not-allowed}
+  .check.disabled{color:var(--muted);cursor:not-allowed}
+  .check .soon{font-size:10px;letter-spacing:.16em;color:var(--accent-2);margin-left:6px;text-transform:uppercase}
+
+  /* ===== Deep compress config (collapsible) ===== */
+  .deep-config{
+    margin-top:14px;padding:14px 16px;
+    background:var(--bg-2);border:1px solid var(--border-soft);border-radius:3px;
+    display:none;
+  }
+  .deep-config.show{display:block;animation:fadeIn .2s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+  .deep-config .dc-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:10px}
+  .deep-config .dc-row:last-child{margin-bottom:0}
+  .deep-config .dc-label{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);min-width:80px}
+  .deep-config select, .deep-config input[type=text]{
+    font-family:var(--mono);background:var(--surface-2);color:var(--text);
+    border:1px solid var(--border);border-radius:3px;
+    padding:7px 10px;font-size:12px;outline:none;
+  }
+  .deep-config select:focus, .deep-config input[type=text]:focus{border-color:var(--accent-dim)}
+  .deep-config .ratio-group{display:flex;gap:6px;flex-wrap:wrap}
+  .deep-config .ratio-btn{
+    font-family:var(--mono);background:var(--surface-2);color:var(--muted);
+    border:1px solid var(--border);border-radius:3px;
+    padding:6px 12px;font-size:11px;cursor:pointer;transition:all .14s;
+  }
+  .deep-config .ratio-btn:hover{border-color:var(--accent-dim);color:var(--accent)}
+  .deep-config .ratio-btn.active{
+    background:rgba(77,255,180,.10);border-color:var(--accent);color:var(--accent);
+  }
+
+  .actions{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;align-items:center}
+  .btn{
+    font-family:var(--mono);border:none;border-radius:3px;
+    padding:12px 26px;font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+    cursor:pointer;transition:all .15s;
+  }
+  .btn-primary{background:var(--accent);color:#04130d;font-weight:700;box-shadow:0 0 0 rgba(77,255,180,.0)}
+  .btn-primary:hover:not(:disabled){box-shadow:0 0 22px rgba(77,255,180,.4);transform:translateY(-1px)}
+  .btn-primary:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;box-shadow:none;transform:none}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+  .btn-ghost:hover{border-color:var(--muted);color:var(--text)}
+  .btn .spinner{
+    display:inline-block;width:12px;height:12px;border:2px solid currentColor;
+    border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;
+    vertical-align:-2px;margin-right:8px;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .form-msg{font-size:12px;color:var(--danger);letter-spacing:.04em;margin-top:14px;min-height:16px;opacity:0;transition:opacity .15s}
+  .form-msg.show{opacity:1}
+  .form-msg.info{color:var(--accent-2)}
+
+  /* ===== Compress progress steps ===== */
+  .compress-progress{display:none;align-items:center;gap:0;margin-top:18px;padding:16px 18px;background:var(--bg-2);border:1px solid var(--border-soft);border-radius:3px;flex-wrap:nowrap;overflow-x:auto}
+  .compress-progress.show{display:flex;animation:fadeIn .2s ease}
+  .compress-progress .step{display:flex;align-items:center;gap:8px;padding:4px 8px;flex-shrink:0}
+  .compress-progress .step-dot{
+    width:22px;height:22px;border-radius:50%;border:2px solid var(--border);
+    background:var(--bg-2);position:relative;flex-shrink:0;transition:all .3s;
+  }
+  .compress-progress .step.active .step-dot{
+    border-color:var(--accent);background:var(--accent);
+    box-shadow:0 0 12px rgba(77,255,180,.6);
+  }
+  .compress-progress .step.active .step-dot::after{
+    content:"";position:absolute;inset:4px;border:2px solid var(--bg);
+    border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;
+  }
+  .compress-progress .step.done .step-dot{border-color:var(--accent);background:var(--accent)}
+  .compress-progress .step.done .step-dot::after{
+    content:"✓";position:absolute;inset:0;display:flex;align-items:center;
+    justify-content:center;color:var(--bg);font-size:13px;font-weight:bold;
+  }
+  .compress-progress .step-label{
+    font-size:12px;letter-spacing:.1em;color:var(--muted);
+    text-transform:uppercase;white-space:nowrap;
+  }
+  .compress-progress .step.active .step-label{color:var(--accent)}
+  .compress-progress .step.done .step-label{color:var(--text)}
+  .compress-progress .step-line{
+    flex:1;min-width:24px;height:2px;background:var(--border);transition:background .4s;
+  }
+  .compress-progress .step-line.done{background:var(--accent)}
+  #modelTimer{color:var(--accent-2);font-weight:600;margin-left:2px}
+
+  /* ===== Output ===== */
+  .output{margin-top:42px}
+  .out-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+  .out-stat{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .out-stat b{color:var(--accent);font-weight:600}
+  .out-stat span.sep{margin:0 12px;color:var(--border)}
+  .btn-small{
+    font-family:var(--mono);background:var(--bg-2);color:var(--accent);
+    border:1px solid var(--border);border-radius:3px;
+    padding:8px 16px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    cursor:pointer;transition:all .14s;
+  }
+  .btn-small:hover{border-color:var(--accent);box-shadow:0 0 14px rgba(77,255,180,.12)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px}
+  .empty-state{
+    text-align:center;color:var(--muted);font-size:13px;letter-spacing:.1em;
+    padding:70px 20px;border:1px dashed var(--border);border-radius:4px;background:rgba(255,255,255,.01);
+  }
+  .empty-state .glyph{font-family:var(--display);font-size:30px;color:var(--border);display:block;margin-bottom:14px;letter-spacing:.2em}
+
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:4px;
+    display:flex;flex-direction:column;overflow:hidden;position:relative;
+    transition:transform .18s ease,border-color .18s,box-shadow .18s;
+    animation:cardin .4s cubic-bezier(.2,.7,.3,1) both;
+  }
+  @keyframes cardin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .card:hover{
+    transform:translateY(-3px);border-color:var(--accent-dim);
+    box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 0 1px rgba(77,255,180,.08),0 0 24px rgba(77,255,180,.08);
+  }
+  .card-head{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:11px 14px;border-bottom:1px solid var(--border-soft);background:var(--surface-2);
+  }
+  .card-idx{font-size:12px;letter-spacing:.1em;color:var(--accent);font-weight:600}
+  .card-idx .total{color:var(--muted);font-weight:400}
+  .card-cnt{font-size:11px;letter-spacing:.12em;color:var(--accent-2)}
+  .card-body{
+    padding:12px 16px;font-size:13.5px;line-height:1.6;color:var(--text);
+    word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+    overflow:hidden;flex:1;
+  }
+  .card.expanded .card-body{
+    -webkit-line-clamp:unset;display:block;white-space:pre-wrap;max-height:340px;overflow:auto;
+  }
+  .card-body::-webkit-scrollbar{width:8px}
+  .card-body::-webkit-scrollbar-track{background:transparent}
+  .card-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .card-body::-webkit-scrollbar-thumb:hover{background:var(--accent-dim)}
+  .card-foot{padding:10px 14px;border-top:1px solid var(--border-soft);background:var(--surface-2);display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .copy-btn{
+    font-family:var(--mono);background:transparent;color:var(--text);
+    border:1px solid var(--border);border-radius:3px;
+    padding:7px 16px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+    cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:7px;
+  }
+  .copy-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .copy-btn.expand-btn{color:var(--muted)}
+  .copy-btn.expand-btn:hover{color:var(--accent-2);border-color:var(--accent-2)}
+  .copy-btn.done{border-color:var(--accent);color:var(--accent);background:rgba(77,255,180,.08)}
+  .copy-btn.fail{border-color:var(--danger);color:var(--danger)}
+
+  /* ===== Compress result panel ===== */
+  .compress-result{display:none;margin-bottom:18px}
+  .compress-result.show{display:block;animation:cardin .4s cubic-bezier(.2,.7,.3,1) both}
+  .compress-result .panel-body{padding:18px}
+  .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+  @media(max-width:560px){.stats-grid{grid-template-columns:1fr}}
+  .stat-card{background:var(--bg-2);border:1px solid var(--border-soft);border-radius:3px;padding:14px 16px}
+  .stat-card .lbl{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .stat-card .val{font-family:var(--display);font-size:28px;color:var(--text);line-height:1}
+  .stat-card.algo .val{color:var(--accent)}
+  .stat-card.model .val{color:var(--accent-2)}
+  .stat-card .pct{font-size:11px;color:var(--muted);letter-spacing:.08em;margin-top:6px}
+  .bars{display:flex;flex-direction:column;gap:14px;margin-bottom:18px}
+  .bar-row{display:flex;flex-direction:column;gap:5px}
+  .bar-row .bar-head{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+  .bar-row .bar-head .v{color:var(--text)}
+  .bar-track{height:10px;background:var(--bg-2);border:1px solid var(--border-soft);border-radius:2px;overflow:hidden}
+  .bar-fill{height:100%;width:0;border-radius:1px;transition:width .9s cubic-bezier(.2,.7,.3,1)}
+  .bar-fill.algo{background:linear-gradient(90deg,var(--accent-dim),var(--accent));box-shadow:0 0 8px rgba(77,255,180,.3)}
+  .bar-fill.model{background:linear-gradient(90deg,#b8741a,var(--accent-2));box-shadow:0 0 8px rgba(255,200,87,.3)}
+  .result-text-box{
+    background:var(--bg-2);border:1px solid var(--border-soft);border-radius:3px;
+    padding:16px 18px;font-family:var(--mono);font-size:14px;line-height:1.7;
+    color:var(--text);white-space:pre-wrap;word-break:break-word;
+    max-height:380px;overflow:auto;
+  }
+  .result-text-box::-webkit-scrollbar{width:8px}
+  .result-text-box::-webkit-scrollbar-track{background:transparent}
+  .result-text-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .result-text-box::-webkit-scrollbar-thumb:hover{background:var(--accent-dim)}
+  .result-foot{padding:10px 0 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+
+  footer.foot{
+    margin-top:60px;padding-top:22px;border-top:1px solid var(--border-soft);
+    display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+  }
+  footer.foot a{color:var(--accent-dim);text-decoration:none}
+  footer.foot a:hover{color:var(--accent)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="top">
+      <div class="brand">
+        <div class="sig"><span class="dot off" id="statusDot"></span><span id="statusText">SIGNAL RELAY · 初始化</span></div>
+        <h1>ai.txt<span class="cur">▌</span></h1>
+        <div class="sub">文本拆分 + 深度压缩。把长文本切成可单次粘贴的小块，或调用本地小模型做语义级压缩。两种模式可独立或组合使用。</div>
+      </div>
+      <div class="meta-strip">
+        <button type="button" class="theme-toggle" id="themeToggle" title="切换明暗主题"><span id="themeIcon">☾</span> <span id="themeLabel">深色</span></button>
+        <div>NODE / 0xA1</div>
+        <div>MODEL / <span class="model" id="modelLabel">--</span></div>
+        <div>LATENCY <span class="lat" id="lat">--ms</span></div>
+        <div id="clock">--:--:--</div>
+        <div class="hint-line" id="hintLine">深度压缩需启动：bash start.sh</div>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head">
+        <span><span class="tag">[01]</span> 输入 · INPUT STREAM</span>
+        <span id="modeBadge">MODE / 500</span>
+      </div>
+      <div class="panel-body">
+        <div class="input-wrap">
+          <div class="ta-tools">
+            <button type="button" class="ta-tool" id="btnExpandInput" title="展开/收起输入框">⤢ 展开</button>
+            <button type="button" class="ta-tool" id="btnSelectAll" title="全选 (Ctrl/⌘+A)">全选</button>
+            <button type="button" class="ta-tool" id="btnInlineClear" title="清空输入">✕ 清空</button>
+          </div>
+          <textarea id="src" placeholder="把要处理的文本粘贴到这里…&#10;选择拆分粒度 → 点击 [ 拆分 ] → 逐张复制粘贴给对面的 AI。&#10;勾选「深度压缩」可先压缩再拆分。"></textarea>
+          <div class="count-line">总字数 <b id="total">0</b></div>
+        </div>
+
+        <div class="controls">
+          <div class="group">
+            <span class="label">拆分粒度 · CHUNK SIZE</span>
+            <div class="seg" id="sizeSeg">
+              <button type="button" data-size="500" class="active">500 字</button>
+              <button type="button" data-size="1000">1000 字</button>
+              <button type="button" data-size="custom">自定义</button>
+              <button type="button" data-size="nosplit">仅精简</button>
+              <input type="number" id="customSize" value="800" min="50" max="10000" disabled placeholder="字数" />
+            </div>
+            <div class="hint" id="sizeHint">每片字符数严格不超过上限，自动在片尾断点处换片。</div>
+          </div>
+
+          <div class="group">
+            <span class="label">清洗 · CLEAN</span>
+            <div class="checks">
+              <label class="check"><input type="checkbox" id="optNL" checked /> 去除换行</label>
+              <label class="check"><input type="checkbox" id="optWS" checked /> 合并多余空白</label>
+              <label class="check"><input type="checkbox" id="optMD" checked /> 深度精简（去 MD 符号 + 断句合并）</label>
+              <label class="check"><input type="checkbox" id="optDeep" /> 深度压缩 <span class="soon">模型 · 可选</span></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 深度压缩配置（勾选后展开） -->
+        <div class="deep-config" id="deepConfig">
+          <div class="dc-row">
+            <span class="dc-label">压缩比例</span>
+            <div class="ratio-group" id="ratioGroup">
+              <button type="button" class="ratio-btn" data-ratio="0.3">30%</button>
+              <button type="button" class="ratio-btn active" data-ratio="0.5">50%</button>
+              <button type="button" class="ratio-btn" data-ratio="0.7">70%</button>
+              <button type="button" class="ratio-btn" data-ratio="custom">自定义</button>
+              <input type="number" id="customRatio" value="0.45" min="0.1" max="0.9" step="0.05" disabled placeholder="0.1-0.9" style="width:80px" />
+            </div>
+          </div>
+          <div class="dc-row">
+            <span class="dc-label">模型选项</span>
+            <label class="check" style="gap:8px"><input type="checkbox" id="optModel" checked /> 启用模型 <span class="soon">更深</span></label>
+            <select id="modelSel" style="cursor:pointer">
+              <option value="qwen2.5:1.5b" selected>qwen2.5:1.5b（好 · 慢）</option>
+              <option value="qwen2.5:0.5b">qwen2.5:0.5b（快 · 浅）</option>
+            </select>
+          </div>
+          <div class="dc-row">
+            <span class="dc-label">服务地址</span>
+            <input type="text" id="svcInput" value="http://127.0.0.1:8787" placeholder="http://127.0.0.1:8787" style="width:260px" />
+            <button type="button" class="ta-tool" id="btnSaveSvc">保存重连</button>
+            <span class="hint" id="svcHint"></span>
+          </div>
+        </div>
+
+        <!-- 压缩进度条（仅深度压缩时显示） -->
+        <div class="compress-progress" id="compressProgress">
+          <div class="step" data-step="1"><span class="step-dot"></span><span class="step-label">清洗</span></div>
+          <div class="step-line" data-line="1"></div>
+          <div class="step" data-step="2"><span class="step-dot"></span><span class="step-label">算法</span></div>
+          <div class="step-line" data-line="2"></div>
+          <div class="step" data-step="3"><span class="step-dot"></span><span class="step-label">模型 <span id="modelTimer"></span></span></div>
+          <div class="step-line" data-line="3"></div>
+          <div class="step" data-step="4"><span class="step-dot"></span><span class="step-label">完成</span></div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="btnSplit" disabled>拆分 →</button>
+          <button class="btn btn-ghost" id="btnClear">清空</button>
+        </div>
+        <div class="form-msg" id="formMsg"></div>
+      </div>
+    </section>
+
+    <section class="output">
+      <div class="out-bar">
+        <div class="out-stat" id="outStat">等待输入信号…</div>
+        <button class="btn-small" id="btnCopyAll" style="display:none">复制全部（按顺序）</button>
+      </div>
+
+      <!-- 深度压缩结果面板（仅精简+深度压缩时显示） -->
+      <div id="compressResult" class="panel compress-result">
+        <div class="panel-head">
+          <span><span class="tag">[02]</span> 压缩结果 · DEEP COMPRESS</span>
+          <span id="resultBadge">--</span>
+        </div>
+        <div class="panel-body">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="lbl">原始 · ORIGINAL</div>
+              <div class="val" id="statOrig">0</div>
+              <div class="pct">100%</div>
+            </div>
+            <div class="stat-card algo">
+              <div class="lbl">算法 · TEXTRANK</div>
+              <div class="val" id="statAlgo">0</div>
+              <div class="pct" id="statAlgoPct">--</div>
+            </div>
+            <div class="stat-card model">
+              <div class="lbl">模型 · LLM</div>
+              <div class="val" id="statModel">0</div>
+              <div class="pct" id="statModelPct">--</div>
+            </div>
+          </div>
+          <div class="bars">
+            <div class="bar-row">
+              <div class="bar-head"><span>算法阶段</span><span class="v" id="barAlgoLbl">--</span></div>
+              <div class="bar-track"><div class="bar-fill algo" id="barAlgo"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-head"><span>模型阶段</span><span class="v" id="barModelLbl">--</span></div>
+              <div class="bar-track"><div class="bar-fill model" id="barModel"></div></div>
+            </div>
+          </div>
+          <div class="result-text-box" id="resultText">--</div>
+          <div class="result-foot">
+            <span style="font-size:11px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase" id="resultCnt">--</span>
+            <button class="copy-btn" id="btnCopyResult">复制结果</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片网格（拆分模式） -->
+      <div id="grid">
+        <div class="empty-state">
+          <span class="glyph">- - -</span>
+          粘贴文本并点击「拆分」后，卡片将在此处生成
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>AI.TXT · SPLITTER + DEEP COMPRESSOR</span>
+      <span>本地运行 · 不上传 · <a href="index.html">原版拆分器</a></span>
+    </footer>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ===== elements =====
+  var $src=document.getElementById("src");
+  var $total=document.getElementById("total");
+  var $sizeSeg=document.getElementById("sizeSeg");
+  var $customSize=document.getElementById("customSize");
+  var $sizeHint=document.getElementById("sizeHint");
+  var $optNL=document.getElementById("optNL");
+  var $optWS=document.getElementById("optWS");
+  var $optMD=document.getElementById("optMD");
+  var $optDeep=document.getElementById("optDeep");
+  var $optModel=document.getElementById("optModel");
+  var $modelSel=document.getElementById("modelSel");
+  var $deepConfig=document.getElementById("deepConfig");
+  var $ratioGroup=document.getElementById("ratioGroup");
+  var $customRatio=document.getElementById("customRatio");
+  var $svcInput=document.getElementById("svcInput");
+  var $btnSaveSvc=document.getElementById("btnSaveSvc");
+  var $svcHint=document.getElementById("svcHint");
+  var $btnSplit=document.getElementById("btnSplit");
+  var $btnClear=document.getElementById("btnClear");
+  var $btnSelectAll=document.getElementById("btnSelectAll");
+  var $btnInlineClear=document.getElementById("btnInlineClear");
+  var $formMsg=document.getElementById("formMsg");
+  var $grid=document.getElementById("grid");
+  var $outStat=document.getElementById("outStat");
+  var $btnCopyAll=document.getElementById("btnCopyAll");
+  var $modeBadge=document.getElementById("modeBadge");
+  var $lat=document.getElementById("lat");
+  var $clock=document.getElementById("clock");
+  var $statusDot=document.getElementById("statusDot");
+  var $statusText=document.getElementById("statusText");
+  var $modelLabel=document.getElementById("modelLabel");
+  var $hintLine=document.getElementById("hintLine");
+  // compress result elements
+  var $compressResult=document.getElementById("compressResult");
+  var $resultBadge=document.getElementById("resultBadge");
+  var $statOrig=document.getElementById("statOrig");
+  var $statAlgo=document.getElementById("statAlgo");
+  var $statModel=document.getElementById("statModel");
+  var $statAlgoPct=document.getElementById("statAlgoPct");
+  var $statModelPct=document.getElementById("statModelPct");
+  var $barAlgo=document.getElementById("barAlgo");
+  var $barModel=document.getElementById("barModel");
+  var $barAlgoLbl=document.getElementById("barAlgoLbl");
+  var $barModelLbl=document.getElementById("barModelLbl");
+  var $resultText=document.getElementById("resultText");
+  var $resultCnt=document.getElementById("resultCnt");
+  var $btnCopyResult=document.getElementById("btnCopyResult");
+  var $compressProgress=document.getElementById("compressProgress");
+  var $modelTimer=document.getElementById("modelTimer");
+
+  // ===== state =====
+  var state={
+    size:500, custom:false, nosplit:false, lastChunks:[],
+    baseURL: localStorage.getItem("compressor.baseURL") || "http://127.0.0.1:8787",
+    healthy:false, model:"qwen2.5:1.5b",
+    ratio:0.5, customRatio:false,
+    useModel:true, processing:false
+  };
+  $svcInput.value=state.baseURL;
+  $modelSel.value=state.model;
+
+  // ===== live char count =====
+  function updateCount(){
+    var n=$src.value.length;
+    $total.textContent=n.toLocaleString();
+    $btnSplit.disabled = $src.value.trim().length===0;
+  }
+  $src.addEventListener("input",function(){ updateCount(); hideMsg(); });
+  $src.addEventListener("wheel",function(e){
+    var hasOverflow=this.scrollHeight-this.clientHeight>1;
+    if(!hasOverflow) return;
+    var atTop=this.scrollTop<=0;
+    var atBottom=this.scrollTop+this.clientHeight>=this.scrollHeight-1;
+    if((e.deltaY<0 && atTop) || (e.deltaY>0 && atBottom)) return;
+    e.stopPropagation();
+  },{passive:true});
+  updateCount();
+
+  // ===== input expand toggle =====
+  var $inputWrap=document.querySelector(".input-wrap");
+  var $btnExpandInput=document.getElementById("btnExpandInput");
+  $btnExpandInput.addEventListener("click",function(){
+    var isExp=$inputWrap.classList.toggle("expanded");
+    $btnExpandInput.innerHTML = isExp ? "⤡ 收起" : "⤢ 展开";
+  });
+
+  // ===== size selector =====
+  $sizeSeg.addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(!b) return;
+    var sz=b.getAttribute("data-size");
+    [].forEach.call($sizeSeg.querySelectorAll("button"),function(x){x.classList.remove("active")});
+    b.classList.add("active");
+    state.nosplit = (sz==="nosplit");
+    if(sz==="custom"){
+      state.custom=true; $customSize.disabled=false; $customSize.focus();
+      state.size=parseInt($customSize.value,10)||800;
+    }else if(sz==="nosplit"){
+      state.custom=false; $customSize.disabled=true; state.size=0;
+    }else{
+      state.custom=false; $customSize.disabled=true; state.size=parseInt(sz,10);
+    }
+    $modeBadge.textContent = state.nosplit ? "MODE / NOSPLIT" : ("MODE / "+state.size);
+    $sizeHint.textContent = state.nosplit
+      ? "仅按清洗规则精简文本，不拆分，输出为单张卡片。"
+      : "每片字符数严格不超过上限，自动在片尾断点处换片。";
+    hideMsg();
+  });
+  $customSize.addEventListener("input",function(){
+    if(state.custom){
+      state.size=parseInt($customSize.value,10)||0;
+      $modeBadge.textContent="MODE / "+($customSize.value||"--");
+      hideMsg();
+    }
+  });
+
+  // ===== deep compress toggle =====
+  $optDeep.addEventListener("change",function(){
+    if($optDeep.checked){
+      $deepConfig.classList.add("show");
+      checkHealth();
+    }else{
+      $deepConfig.classList.remove("show");
+    }
+    updateModeBadge();
+  });
+  $optModel.addEventListener("change",function(){
+    state.useModel=$optModel.checked;
+    $modelSel.disabled=!state.useModel;
+  });
+  $modelSel.addEventListener("change",function(){ state.model=$modelSel.value; });
+
+  // ===== ratio selector =====
+  $ratioGroup.addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(!b) return;
+    var r=b.getAttribute("data-ratio");
+    [].forEach.call($ratioGroup.querySelectorAll("button"),function(x){x.classList.remove("active")});
+    b.classList.add("active");
+    if(r==="custom"){
+      state.customRatio=true; $customRatio.disabled=false; $customRatio.focus();
+    }else{
+      state.customRatio=false; $customRatio.disabled=true; state.ratio=parseFloat(r);
+    }
+    updateModeBadge();
+  });
+  $customRatio.addEventListener("input",function(){
+    if(state.customRatio) updateModeBadge();
+  });
+  function currentRatio(){
+    return state.customRatio ? (parseFloat($customRatio.value)||0.5) : state.ratio;
+  }
+
+  // ===== service url =====
+  $btnSaveSvc.addEventListener("click",function(){
+    var u=$svcInput.value.trim().replace(/\/+$/,"");
+    state.baseURL=u;
+    localStorage.setItem("compressor.baseURL",u);
+    checkHealth();
+  });
+  $svcInput.addEventListener("keydown",function(e){
+    if(e.key==="Enter"){ $btnSaveSvc.click(); }
+  });
+
+  function updateModeBadge(){
+    var parts=[];
+    parts.push(state.nosplit?"NOSPLIT":("SPLIT "+state.size));
+    if($optDeep.checked){
+      parts.push("DEEP "+Math.round(currentRatio()*100)+"%");
+      parts.push(state.useModel?"MODEL":"ALGO");
+    }
+    $modeBadge.textContent="MODE / "+parts.join(" · ");
+  }
+
+  // ===== messages =====
+  function showMsg(t,info){ $formMsg.textContent=t; $formMsg.className="form-msg show"+(info?" info":""); }
+  function hideMsg(){ $formMsg.classList.remove("show"); }
+
+  // ===== health check =====
+  async function checkHealth(){
+    if(!$optDeep.checked){ return; }
+    try{
+      var res=await fetch(state.baseURL+"/health",{method:"GET"});
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      var data=await res.json();
+      state.healthy = !!data.ollama;
+      if(data.model){ state.model=data.model; $modelLabel.textContent=data.model; }
+      renderStatus();
+    }catch(e){
+      state.healthy=false;
+      renderStatus();
+    }
+  }
+  function renderStatus(){
+    if(state.healthy){
+      $statusDot.classList.remove("off");
+      $statusText.textContent="SIGNAL RELAY · 在线";
+      $hintLine.classList.remove("show");
+      $svcHint.textContent="✓ 服务在线";
+      $svcHint.style.color="var(--accent)";
+    }else{
+      $statusDot.classList.add("off");
+      $statusText.textContent="SIGNAL RELAY · 离线";
+      $hintLine.classList.add("show");
+      $svcHint.textContent="✗ 离线";
+      $svcHint.style.color="var(--danger)";
+    }
+  }
+  function startHealthPolling(){
+    checkHealth();
+  }
+
+  // ===== compress progress bar =====
+  var modelTimerId=null;
+  var modelStartTime=0;
+  function showProgress(){ $compressProgress.classList.add("show"); }
+  function hideProgress(){ $compressProgress.classList.remove("show"); }
+  function resetProgress(){
+    $compressProgress.querySelectorAll(".step").forEach(function(s){s.classList.remove("active","done")});
+    $compressProgress.querySelectorAll(".step-line").forEach(function(l){l.classList.remove("done")});
+    $modelTimer.textContent="";
+  }
+  function setStep(n){
+    // mark steps < n as done
+    for(var i=1;i<n;i++){
+      var s=$compressProgress.querySelector('.step[data-step="'+i+'"]');
+      if(s){ s.classList.remove("active"); s.classList.add("done"); }
+      var l=$compressProgress.querySelector('.step-line[data-line="'+i+'"]');
+      if(l){ l.classList.add("done"); }
+    }
+    // mark step n as active
+    var cur=$compressProgress.querySelector('.step[data-step="'+n+'"]');
+    if(cur){
+      cur.classList.remove("done");
+      cur.classList.add("active");
+    }
+    // mark steps > n as idle
+    for(var j=n+1;j<=4;j++){
+      var sx=$compressProgress.querySelector('.step[data-step="'+j+'"]');
+      if(sx){ sx.classList.remove("active","done"); }
+    }
+  }
+  function finishProgress(){
+    for(var i=1;i<=4;i++){
+      var s=$compressProgress.querySelector('.step[data-step="'+i+'"]');
+      if(s){ s.classList.remove("active"); s.classList.add("done"); }
+      var l=$compressProgress.querySelector('.step-line[data-line="'+i+'"]');
+      if(l){ l.classList.add("done"); }
+    }
+    stopModelTimer();
+  }
+  function startModelTimer(){
+    modelStartTime=Date.now();
+    $modelTimer.textContent="0.0s";
+    modelTimerId=setInterval(function(){
+      var elapsed=(Date.now()-modelStartTime)/1000;
+      $modelTimer.textContent=elapsed.toFixed(1)+"s";
+    },100);
+  }
+  function stopModelTimer(){
+    if(modelTimerId){ clearInterval(modelTimerId); modelTimerId=null; }
+    if(modelStartTime){
+      var final=((Date.now()-modelStartTime)/1000).toFixed(1);
+      $modelTimer.textContent=final+"s";
+    }
+  }
+
+  // ===== MD compress (from original index.html) =====
+  function compressMD(t){
+    t=t.replace(/```[a-zA-Z]*\r?\n?/g,"");
+    t=t.replace(/```/g,"");
+    t=t.replace(/`([^`\n]+)`/g,"$1");
+    t=t.replace(/^#{1,6}\s+/gm,"");
+    t=t.replace(/^---+\s*$/gm,"");
+    t=t.replace(/^[*+-]\s+/gm,"");
+    t=t.replace(/^>\s?/gm,"");
+    t=t.replace(/\*\*([^*\n]+)\*\*/g,"$1");
+    t=t.replace(/\r?\n\s*↓\s*\r?\n/g," → ");
+    t=t.replace(/↓/g,"→");
+    t=t.replace(/：\r?\n/g,"");
+    t=t.replace(/。\r?\n/g,"。");
+    t=t.replace(/\s+([，。！？；,\.!?;:、])/g,"$1");
+    return t;
+  }
+
+  // ===== clean =====
+  function clean(text){
+    var t=text;
+    if($optMD.checked) t=compressMD(t);
+    if($optNL.checked) t=t.replace(/[\r\n]+/g," ");
+    if($optWS.checked){ t=t.replace(/[ \t]+/g," "); }
+    return t.trim();
+  }
+
+  // ===== chunk =====
+  var BREAK=/[\s，。！？；,\.!?;、：:]/;
+  function chunk(text,limit){
+    var out=[]; var i=0;
+    while(i<text.length){
+      var end=Math.min(i+limit,text.length);
+      if(end<text.length){
+        var searchStart=i+Math.floor(limit*0.85);
+        if(searchStart<i) searchStart=i;
+        var breakAt=-1;
+        for(var j=end-1;j>=searchStart;j--){
+          if(BREAK.test(text.charAt(j))){ breakAt=j; break; }
+        }
+        if(breakAt>i) end=breakAt+1;
+      }
+      var piece=text.slice(i,end).trim();
+      if(piece) out.push(piece);
+      i=end;
+    }
+    return out;
+  }
+
+  // ===== deep compress via API =====
+  async function deepCompress(text){
+    var ratio=currentRatio();
+    var body={ text:text, ratio:ratio, no_model: !state.useModel, model: state.model };
+    var res=await fetch(state.baseURL+"/compress",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body)
+    });
+    if(!res.ok){
+      var errText=await res.text().catch(function(){return "HTTP "+res.status;});
+      throw new Error(errText);
+    }
+    return await res.json();
+  }
+
+  // ===== render compress result =====
+  function renderCompressResult(data){
+    var orig=data.original||0;
+    var algo=data.stages ? data.stages.after_algo : orig;
+    var model=data.stages ? data.stages.after_model : (data.compressed||0);
+    var finalLen=data.compressed||0;
+    var ratioPct=orig>0 ? (finalLen/orig*100) : 0;
+
+    $statOrig.textContent=orig.toLocaleString();
+    $statAlgo.textContent=algo.toLocaleString();
+    $statModel.textContent=model.toLocaleString();
+    $statAlgoPct.textContent = orig>0 ? (algo/orig*100).toFixed(1)+"% of original" : "--";
+    $statModelPct.textContent = orig>0 ? (model/orig*100).toFixed(1)+"% of original" : "--";
+
+    // 先重置进度条为 0
+    $barAlgo.style.width="0%";
+    $barModel.style.width="0%";
+
+    // 显示面板
+    $compressResult.classList.add("show");
+
+    // 强制 reflow 确保过渡动画生效
+    void $compressResult.offsetWidth;
+
+    // 计算并设置进度条
+    var algoPct = orig>0 ? Math.min(100, algo/orig*100) : 0;
+    var modelPct = orig>0 ? Math.min(100, model/orig*100) : 0;
+    $barAlgo.style.width=algoPct+"%";
+    $barModel.style.width=modelPct+"%";
+    $barAlgoLbl.textContent=algo.toLocaleString()+" 字 · "+algoPct.toFixed(1)+"%";
+    $barModelLbl.textContent=model.toLocaleString()+" 字 · "+modelPct.toFixed(1)+"%";
+
+    $resultText.textContent=data.text||"";
+    $resultCnt.textContent="结果 "+finalLen.toLocaleString()+" 字 · 压缩比 "+ratioPct.toFixed(1)+"%";
+    $resultBadge.textContent="RATIO "+ratioPct.toFixed(0)+"%";
+
+    $outStat.innerHTML='原始 <b>'+orig.toLocaleString()+'</b> 字 <span class="sep">→</span> 压缩 <b>'+finalLen.toLocaleString()+'</b> 字 <span class="sep">·</span> 压缩比 <b>'+ratioPct.toFixed(1)+'%</b>';
+  }
+
+  // ===== main: split / compress =====
+  $btnSplit.addEventListener("click",async function(){
+    var raw=$src.value;
+    if(raw.trim().length===0){ showMsg("请输入文本"); return; }
+    if(state.custom){
+      if(!state.size || state.size<50 || state.size>10000){ showMsg("自定义字数需在 50–10000 之间"); return; }
+    }
+
+    // 如果启用深度压缩，先检查服务
+    if($optDeep.checked){
+      if(!state.healthy){
+        showMsg("深度压缩服务离线，请先启动 bash start.sh");
+        return;
+      }
+    }
+
+    if(state.processing) return;
+    state.processing=true;
+    var origLabel=$btnSplit.innerHTML;
+    $btnSplit.disabled=true;
+    hideMsg();
+
+    // 启用深度压缩时显示进度条
+    if($optDeep.checked){
+      resetProgress();
+      showProgress();
+    }
+
+    try{
+      // 步骤1：清洗
+      if($optDeep.checked) setStep(1);
+      var cleaned=clean(raw);
+      if(cleaned.length===0){ showMsg("清洗后文本为空，请调整清洗选项"); resetProgress(); hideProgress(); return; }
+
+      var workText=cleaned;
+      var compressData=null;
+
+      // 深度压缩
+      if($optDeep.checked){
+        // 步骤2：算法压缩（后端管线内含算法+模型，这里逐步标记）
+        // 后端一次请求完成算法+模型，前端按时间分阶段显示
+        setStep(2);
+        $btnSplit.innerHTML='<span class="spinner"></span>算法压缩…';
+
+        // 如果启用模型，算法阶段短暂展示后进入模型阶段
+        if(state.useModel){
+          // 给算法阶段一个最小展示时间（500ms），然后切到模型阶段
+          await new Promise(function(r){ setTimeout(r,500); });
+          setStep(3);
+          $btnSplit.innerHTML='<span class="spinner"></span>模型压缩…';
+          showMsg("正在调用本地模型压缩，可能需要 10–30 秒…", true);
+          startModelTimer();
+        }else{
+          showMsg("正在算法压缩…", true);
+        }
+
+        compressData=await deepCompress(cleaned);
+        workText=compressData.text||cleaned;
+        hideMsg();
+        finishProgress();
+      }
+
+      // 拆分
+      if(state.nosplit){
+        // 不拆分
+        if(compressData){
+          // 深度压缩 + 不拆分 → 显示压缩结果面板
+          $grid.innerHTML="";
+          $btnCopyAll.style.display="none";
+          renderCompressResult(compressData);
+          state.lastChunks=[workText];
+        }else{
+          // 仅精简不拆分 → 单张卡片
+          $compressResult.classList.remove("show");
+          render([workText],workText.length);
+          state.lastChunks=[workText];
+        }
+      }else{
+        // 拆分
+        $compressResult.classList.remove("show");
+        var pieces=chunk(workText,state.size);
+        state.lastChunks=pieces;
+        render(pieces,state.size);
+        if(compressData){
+          // 压缩+拆分：在统计里附加压缩信息
+          var origLen=compressData.original||0;
+          var compLen=compressData.compressed||0;
+          $outStat.innerHTML='深度压缩 <b>'+origLen.toLocaleString()+'</b>→<b>'+compLen.toLocaleString()+'</b> 字 <span class="sep">·</span> 拆分 <b>'+pieces.length+'</b> 张 <span class="sep">·</span> 上限 <b>'+state.size+'</b>';
+        }
+      }
+    }catch(e){
+      showMsg("处理失败："+(e.message||e));
+      stopModelTimer();
+      hideProgress();
+    }finally{
+      state.processing=false;
+      $btnSplit.disabled=false;
+      $btnSplit.innerHTML=origLabel;
+    }
+  });
+
+  // ===== render cards =====
+  function hex2(n){ var s=n.toString(16).toUpperCase(); return s.length<2?"0"+s:s; }
+  function render(pieces,limit){
+    $grid.innerHTML="";
+    $compressResult.classList.remove("show");
+    if(pieces.length===0){
+      $grid.innerHTML='<div class="empty-state"><span class="glyph">- - -</span>无内容</div>';
+      $outStat.textContent="等待输入信号…";
+      $btnCopyAll.style.display="none";
+      return;
+    }
+    var total=pieces.length;
+    var totalChars=pieces.reduce(function(a,p){return a+p.length},0);
+    var maxLen=Math.max.apply(null,pieces.map(function(p){return p.length}));
+
+    $outStat.innerHTML =
+      "共 <b>"+total+"</b> 张卡片"+
+      '<span class="sep">·</span>'+
+      "总 <b>"+totalChars.toLocaleString()+"</b> 字"+
+      '<span class="sep">·</span>'+
+      "单片上限 <b>"+limit+"</b>"+
+      '<span class="sep">·</span>'+
+      "最长片 <b>"+maxLen+"</b> 字";
+    $btnCopyAll.style.display = total>1 ? "" : "none";
+
+    var frag=document.createDocumentFragment();
+    pieces.forEach(function(p,idx){
+      var card=document.createElement("div");
+      card.className="card";
+      card.style.animationDelay=(Math.min(idx,12)*0.04)+"s";
+      var head=document.createElement("div");
+      head.className="card-head";
+      head.innerHTML='<span class="card-idx">0x'+hex2(idx+1)+' <span class="total">/ 0x'+hex2(total)+'</span></span><span class="card-cnt">'+p.length+' 字</span>';
+      var body=document.createElement("div");
+      body.className="card-body";
+      body.textContent=p;
+      var foot=document.createElement("div");
+      foot.className="card-foot";
+      var exp=document.createElement("button");
+      exp.className="copy-btn expand-btn"; exp.type="button";
+      exp.innerHTML='<span class="ic">▾</span> <span class="lbl">展开</span>';
+      exp.addEventListener("click",function(){
+        var isExp=card.classList.toggle("expanded");
+        exp.querySelector(".lbl").textContent = isExp ? "收起" : "展开";
+        exp.querySelector(".ic").textContent = isExp ? "▴" : "▾";
+      });
+      foot.appendChild(exp);
+      var btn=document.createElement("button");
+      btn.className="copy-btn"; btn.type="button";
+      btn.innerHTML='<span class="ic">⧉</span> 复制';
+      btn.addEventListener("click",function(){ copyText(p,btn); });
+      foot.appendChild(btn);
+      card.appendChild(head); card.appendChild(body); card.appendChild(foot);
+      frag.appendChild(card);
+    });
+    $grid.appendChild(frag);
+  }
+
+  // ===== copy helpers =====
+  function copyText(text,btn){
+    var original=btn.innerHTML;
+    var done=function(msg){
+      btn.classList.add("done");
+      btn.innerHTML='<span class="ic">✓</span> '+(msg||"已复制");
+      setTimeout(function(){ btn.classList.remove("done"); btn.innerHTML=original; },1400);
+    };
+    var fail=function(){
+      btn.classList.add("fail");
+      btn.innerHTML='<span class="ic">✕</span> 失败';
+      setTimeout(function(){ btn.classList.remove("fail"); btn.innerHTML=original; },1800);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, function(){
+        if(legacyCopy(text)){ done(); } else { fail(); }
+      });
+    } else if(legacyCopy(text)){ done(); } else { fail(); }
+  }
+  function legacyCopy(text){
+    try{
+      var ta=document.createElement("textarea");
+      ta.value=text; ta.style.position="fixed"; ta.style.top="-9999px";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      var ok=document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    }catch(e){ return false; }
+  }
+
+  // ===== copy compress result =====
+  $btnCopyResult.addEventListener("click",function(){
+    var text=$resultText.textContent;
+    if(!text) return;
+    copyText(text,$btnCopyResult);
+  });
+
+  // ===== copy all =====
+  $btnCopyAll.addEventListener("click",function(){
+    if(state.lastChunks.length===0) return;
+    var all=state.lastChunks.join("\n\n---\n\n");
+    copyText(all,$btnCopyAll);
+  });
+
+  // ===== clear =====
+  function clearAll(){
+    $src.value="";
+    updateCount();
+    state.lastChunks=[];
+    $grid.innerHTML='<div class="empty-state"><span class="glyph">- - -</span>粘贴文本并点击「拆分」后，卡片将在此处生成</div>';
+    $outStat.textContent="等待输入信号…";
+    $btnCopyAll.style.display="none";
+    $compressResult.classList.remove("show");
+    hideProgress();
+    stopModelTimer();
+    hideMsg();
+    $src.focus();
+  }
+  $btnClear.addEventListener("click",clearAll);
+  $btnInlineClear.addEventListener("click",clearAll);
+
+  // ===== select all =====
+  $btnSelectAll.addEventListener("click",function(){ $src.focus(); $src.select(); });
+  var $inputPanel=document.querySelector(".panel");
+  $inputPanel.addEventListener("keydown",function(e){
+    if((e.metaKey||e.ctrlKey) && (e.key==="a"||e.key==="A")){ e.preventDefault(); $src.focus(); $src.select(); }
+  });
+
+  // ===== keyboard: Ctrl/Cmd+Enter to split =====
+  $src.addEventListener("keydown",function(e){
+    if((e.ctrlKey||e.metaKey) && e.key==="Enter"){ e.preventDefault(); if(!$btnSplit.disabled) $btnSplit.click(); }
+  });
+
+  // ===== flair: clock + latency =====
+  function pad(n){ return n<10?"0"+n:""+n; }
+  function tick(){ var d=new Date(); $clock.textContent=pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds()); }
+  tick(); setInterval(tick,1000);
+  function ping(){ var v=Math.round(8+Math.random()*22); $lat.textContent=v+"ms"; }
+  ping(); setInterval(ping,2200);
+
+  // ===== theme toggle =====
+  var $themeToggle=document.getElementById("themeToggle");
+  var $themeIcon=document.getElementById("themeIcon");
+  var $themeLabel=document.getElementById("themeLabel");
+  function setTheme(t){
+    if(t==="light"){ document.documentElement.setAttribute("data-theme","light"); $themeIcon.textContent="☀"; $themeLabel.textContent="明亮"; }
+    else{ document.documentElement.removeAttribute("data-theme"); $themeIcon.textContent="☾"; $themeLabel.textContent="深色"; }
+    try{ localStorage.setItem("aitxt-theme",t); }catch(e){}
+  }
+  (function(){ var saved=null; try{ saved=localStorage.getItem("aitxt-theme"); }catch(e){} setTheme(saved==="light"?"light":"dark"); })();
+  $themeToggle.addEventListener("click",function(){
+    var isLight=document.documentElement.getAttribute("data-theme")==="light";
+    setTheme(isLight?"dark":"light");
+  });
+
+  // ===== init =====
+  updateModeBadge();
+  // 如果页面加载时深度压缩已勾选（不太可能，但兜底），启动健康检查
+  if($optDeep.checked){ $deepConfig.classList.add("show"); startHealthPolling(); }
+})();
+</script>
+</body>
+</html>
