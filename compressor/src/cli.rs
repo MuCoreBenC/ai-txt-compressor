@@ -16,8 +16,22 @@ pub async fn run(args: crate::Cli) -> anyhow::Result<()> {
     let opts = CompressOptions {
         ratio: args.ratio,
         no_model: args.no_model,
+        provider: args.provider.clone(),
         model: args.model.clone(),
+        api_key: if args.api_key.is_empty() {
+            std::env::var("DEEPSEEK_API_KEY").ok().filter(|s| !s.is_empty())
+        } else {
+            Some(args.api_key.clone())
+        },
+        base_url: None,
+        reasoning_effort: None,
+        custom_system: None,
+        custom_user_template: None,
         verbose: args.verbose,
+        preset: None,
+        text_algo: None,
+        target_chars_override: None,
+        target_chars: None,
     };
 
     let result = compress(&input, &opts).await?;

@@ -172,6 +172,76 @@
   }
   .seg input[type=number]:focus{border-color:var(--accent-dim)}
   .seg input[type=number]:disabled{opacity:.4;cursor:not-allowed}
+  .first-chunk-row{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+  .first-chunk-row input[type=number]{
+    width:90px;background:var(--bg-2);color:var(--text);
+    border:1px solid var(--border);border-radius:3px;
+    padding:8px 10px;font-family:var(--mono);font-size:13px;outline:none;
+  }
+  .first-chunk-row input[type=number]:focus{border-color:var(--accent-dim)}
+  .first-chunk-row input[type=number]:disabled{opacity:.4;cursor:not-allowed}
+  .fc-mode{display:inline-flex;gap:0;border:1px solid var(--border);border-radius:3px;overflow:hidden}
+  .fc-mode button{
+    font-family:var(--mono);background:var(--bg-2);color:var(--muted);
+    border:none;border-right:1px solid var(--border);
+    padding:8px 14px;font-size:12px;letter-spacing:.06em;cursor:pointer;transition:all .14s;
+  }
+  .fc-mode button:last-child{border-right:none}
+  .fc-mode button:hover{color:var(--text);background:var(--bg-3)}
+  .fc-mode button.active{
+    background:rgba(77,255,180,.10);color:var(--accent);
+    box-shadow:inset 0 0 0 1px var(--accent-dim);
+  }
+  .fc-mode.disabled{opacity:.4;pointer-events:none}
+  /* Diff 视图 */
+  .diff-view{
+    margin:14px 0 8px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    background:var(--bg-2);
+    max-height:420px; overflow:auto;
+    font-family:var(--mono); font-size:12.5px; line-height:1.7;
+  }
+  .diff-row{display:flex; padding:2px 10px; border-bottom:1px solid rgba(255,255,255,.03);}
+  .diff-row:last-child{border-bottom:none;}
+  .diff-row.del{background:rgba(255,77,109,.08);}
+  .diff-row.add{background:rgba(77,255,180,.07);}
+  .diff-tag{flex:0 0 18px; color:var(--muted); user-select:none; font-weight:bold; padding-right:8px;}
+  .diff-row.del .diff-tag{color:#ff6b8a;}
+  .diff-row.add .diff-tag{color:var(--accent);}
+  .diff-text{flex:1; word-break:break-word; white-space:pre-wrap;}
+  .diff-row.del .diff-text{color:#ff6b8a; text-decoration:line-through; text-decoration-color:rgba(255,107,138,.4);}
+  .diff-row.add .diff-text{color:var(--accent);}
+  .diff-head{
+    position:sticky; top:0; z-index:1;
+    display:flex; align-items:center; padding:8px 10px;
+    background:var(--surface-2);
+    border-bottom:1px solid var(--border);
+    font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+  }
+  .diff-head .diff-tag{flex:0 0 18px; padding-right:8px;}
+  .diff-head .diff-title{flex:1;}
+  .diff-head .diff-meta{color:var(--accent-2); font-weight:600; letter-spacing:.08em;}
+  .diff-row .diff-text del{color:#ff6b8a; text-decoration:line-through; text-decoration-color:rgba(255,107,138,.5);}
+  .diff-row .diff-text ins{color:var(--accent); text-decoration:none; background:rgba(77,255,180,.08); padding:0 1px;}
+  .diff-row.mod{background:rgba(255,200,87,.05);}
+  .diff-row.mod .diff-tag{color:var(--accent-2);}
+  .diff-empty{padding:18px; color:var(--muted); text-align:center; font-size:12px; letter-spacing:.08em;}
+  .diff-tabs{
+    display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+    margin:8px 0 0; padding:8px 10px;
+    background:var(--bg-2); border:1px solid var(--border-soft); border-radius:3px;
+  }
+  .diff-tabs-label{font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-right:4px;}
+  .diff-tab{
+    font-family:var(--mono); background:var(--surface-2); color:var(--muted);
+    border:1px solid var(--border); border-radius:3px;
+    padding:6px 12px; font-size:11.5px; letter-spacing:.06em; cursor:pointer; transition:all .14s;
+  }
+  .diff-tab:hover{border-color:var(--accent-dim); color:var(--accent);}
+  .diff-tab.active{background:rgba(77,255,180,.10); border-color:var(--accent); color:var(--accent);}
+  .diff-tab.diff-tab-exit{margin-left:auto; color:var(--danger); border-color:rgba(255,107,107,.3);}
+  .diff-tab.diff-tab-exit:hover{border-color:var(--danger); color:var(--danger); background:rgba(255,107,107,.08);}
   .hint{font-size:11px;color:var(--muted);letter-spacing:.04em}
   .hint.err{color:var(--danger)}
 
@@ -336,6 +406,7 @@
   .copy-btn.expand-btn:hover{color:var(--accent-2);border-color:var(--accent-2)}
   .copy-btn.done{border-color:var(--accent);color:var(--accent);background:rgba(77,255,180,.08)}
   .copy-btn.fail{border-color:var(--danger);color:var(--danger)}
+  .grid-tools{display:flex;gap:8px;align-items:center;margin-left:auto}
 
   /* ===== Compress result panel ===== */
   .compress-result{display:none;margin-bottom:18px}
@@ -368,6 +439,18 @@
   .result-text-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
   .result-text-box::-webkit-scrollbar-thumb:hover{background:var(--accent-dim)}
   .result-foot{padding:10px 0 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .result-view-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+  .result-stack{margin-top:14px;border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .stack-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;background:var(--surface-2);border-bottom:1px solid var(--border-soft)}
+  .stack-tab{font-family:var(--mono);background:var(--bg-2);color:var(--muted);border:1px solid var(--border);border-radius:3px;padding:6px 12px;font-size:11.5px;cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:6px}
+  .stack-tab:hover{border-color:var(--accent-dim);color:var(--accent)}
+  .stack-tab.active{background:rgba(77,255,180,.10);border-color:var(--accent);color:var(--accent)}
+  .stack-tab .stack-close{color:var(--danger);margin-left:4px;font-weight:bold}
+  .stack-tab .stack-close:hover{color:var(--danger)}
+  .stack-body{padding:14px;background:var(--bg-2)}
+  .stack-body .empty-state{padding:20px;text-align:center;color:var(--muted)}
+  .resplit-input{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px dashed var(--border-soft);margin-top:8px}
+  .resplit-input label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 
   footer.foot{
     margin-top:60px;padding-top:22px;border-top:1px solid var(--border-soft);
@@ -376,6 +459,199 @@
   }
   footer.foot a{color:var(--accent-dim);text-decoration:none}
   footer.foot a:hover{color:var(--accent)}
+
+  /* ===== Prompt 编辑 + 运行日志 面板 ===== */
+  .extra-section{margin-top:18px;display:grid;gap:18px}
+  .prompt-panel,.log-panel{animation:cardin .4s cubic-bezier(.2,.7,.3,1) both}
+  .prompt-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px}
+  @media(max-width:760px){.prompt-row{grid-template-columns:1fr}}
+  .prompt-field{display:flex;flex-direction:column;gap:6px}
+  .prompt-field > .label{
+    font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .prompt-field > .label .ph{color:var(--accent-dim);font-size:10px;letter-spacing:.1em;text-transform:none}
+  .prompt-field textarea{
+    width:100%;min-height:120px;max-height:260px;resize:vertical;
+    background:var(--bg-2);color:var(--text);
+    border:1px solid var(--border);border-radius:3px;
+    padding:10px 12px;font-family:var(--mono);font-size:13px;line-height:1.55;
+    outline:none;transition:border-color .15s,box-shadow .15s;
+  }
+  .prompt-field textarea:focus{
+    border-color:var(--accent-dim);
+    box-shadow:0 0 0 3px rgba(77,255,180,.08);
+  }
+  .prompt-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:6px}
+  .prompt-actions .hint{font-size:11px;color:var(--muted);letter-spacing:.06em;flex:1;min-width:200px}
+  .prompt-badge{font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
+  .prompt-badge.custom{color:var(--accent-2)}
+  .prompt-badge.default{color:var(--accent-dim)}
+
+  /* 运行日志 */
+  .log-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:0 0 12px}
+  .log-summary{font-size:11px;letter-spacing:.1em;color:var(--muted);font-family:var(--mono)}
+  .log-summary b{color:var(--accent);font-weight:600}
+  .log-summary.warn b{color:var(--accent-2)}
+  .log-summary.err b{color:var(--danger)}
+  .log-toggles{display:flex;gap:6px;flex-wrap:wrap}
+  .log-toggle{
+    font-family:var(--mono);background:var(--bg-2);color:var(--muted);
+    border:1px solid var(--border);border-radius:3px;
+    padding:5px 10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    cursor:pointer;transition:all .14s;
+  }
+  .log-toggle:hover{border-color:var(--accent-dim);color:var(--accent)}
+  .log-toggle.active{border-color:var(--accent);color:var(--accent);background:rgba(77,255,180,.06)}
+
+  .log-body{
+    background:var(--bg-2);border:1px solid var(--border-soft);border-radius:3px;
+    padding:14px 16px;font-family:var(--mono);font-size:12.5px;line-height:1.65;
+    color:var(--text);max-height:520px;overflow:auto;white-space:pre-wrap;word-break:break-word;
+  }
+  .log-body::-webkit-scrollbar{width:8px}
+  .log-body::-webkit-scrollbar-track{background:transparent}
+  .log-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .log-body::-webkit-scrollbar-thumb:hover{background:var(--accent-dim)}
+  .log-empty{color:var(--muted);text-align:center;padding:24px 0;font-size:12px;letter-spacing:.1em}
+  .log-entry{display:grid;grid-template-columns:60px 1fr;gap:10px;padding:4px 0;border-bottom:1px dashed var(--border-soft)}
+  .log-entry:last-child{border-bottom:none}
+  .log-entry .t{color:var(--muted);font-size:11px;letter-spacing:.06em}
+  .log-entry .m{color:var(--text)}
+  .log-entry.info .m::before{content:"[INFO] ";color:var(--accent-dim);font-weight:600}
+  .log-entry.warn .m::before{content:"[WARN] ";color:var(--accent-2);font-weight:600}
+  .log-entry.error .m::before{content:"[ERROR] ";color:var(--danger);font-weight:600}
+
+  .log-section{margin-top:14px;padding-top:12px;border-top:1px dashed var(--border-soft)}
+  .log-section-title{
+    font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);
+    margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;
+  }
+  .log-section-title .copy-mini{
+    font-family:var(--mono);background:transparent;color:var(--muted);
+    border:1px solid var(--border-soft);border-radius:2px;
+    padding:2px 8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    cursor:pointer;transition:all .14s;
+  }
+  .log-section-title .copy-mini:hover{border-color:var(--accent-dim);color:var(--accent)}
+  .log-pre{
+    background:var(--bg);border:1px solid var(--border-soft);border-radius:3px;
+    padding:10px 12px;font-family:var(--mono);font-size:12px;line-height:1.55;
+    color:var(--text);white-space:pre-wrap;word-break:break-word;max-height:240px;overflow:auto;
+  }
+  .log-pre.muted{color:var(--muted)}
+  .log-kv{display:grid;grid-template-columns:140px 1fr;gap:6px 14px;font-size:12px}
+  .log-kv .k{color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:10.5px;padding-top:2px}
+  .log-kv .v{color:var(--text);word-break:break-all}
+  .log-kv .v.ok{color:var(--accent)}
+  .log-kv .v.fail{color:var(--danger)}
+  .log-kv .v.warn{color:var(--accent-2)}
+
+  /* ===== Task 8: ratio group disabled (model mode) ===== */
+  .ratio-group.disabled-group{opacity:.4;pointer-events:none}
+  .ratio-hint{margin-top:8px;font-size:11px;letter-spacing:.1em;color:var(--accent-2);display:none}
+  .ratio-hint.show{display:block}
+
+  /* ===== Task 3: target mode toggle (比例 / 字数) ===== */
+  .target-mode-toggle{display:inline-flex;gap:0;border:1px solid var(--border);border-radius:3px;overflow:hidden}
+  .target-mode-toggle button{
+    font-family:var(--mono);background:var(--bg-2);color:var(--muted);
+    border:none;border-right:1px solid var(--border);
+    padding:8px 14px;font-size:12px;letter-spacing:.06em;cursor:pointer;transition:all .14s;
+  }
+  .target-mode-toggle button:last-child{border-right:none}
+  .target-mode-toggle button:hover{color:var(--text);background:var(--surface-2)}
+  .target-mode-toggle button.active{
+    background:rgba(77,255,180,.10);color:var(--accent);
+    box-shadow:inset 0 0 0 1px var(--accent-dim);
+  }
+  .target-mode-toggle.disabled{opacity:.4;pointer-events:none}
+
+  /* ===== Task 5: 下载模型对话框 ===== */
+  .modal-overlay{
+    position:fixed;inset:0;z-index:10000;
+    background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
+    display:flex;align-items:center;justify-content:center;
+    padding:24px;
+  }
+  .modal-content{
+    background:var(--surface);border:1px solid var(--border);border-radius:6px;
+    width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .modal-header{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:14px 18px;border-bottom:1px solid var(--border-soft);
+  }
+  .modal-header h3{margin:0;font-size:14px;letter-spacing:.12em;color:var(--accent);font-weight:500}
+  .modal-close{
+    background:transparent;border:none;color:var(--muted);cursor:pointer;
+    font-size:16px;padding:4px 8px;border-radius:3px;
+  }
+  .modal-close:hover{color:var(--text);background:var(--surface-2)}
+  .modal-body{padding:16px 18px;overflow:auto;flex:1}
+  .modal-footer{
+    padding:10px 18px;border-top:1px solid var(--border-soft);
+    display:flex;justify-content:flex-end;align-items:center;
+  }
+  .pull-section{margin-bottom:16px}
+  .pull-section:last-child{margin-bottom:0}
+  .pull-section-title{
+    font-size:11px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  .pull-local-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:6px 10px;background:var(--surface-2);border:1px solid var(--border-soft);
+    border-radius:3px;margin-bottom:4px;font-size:13px;
+  }
+  .pull-local-item .name{color:var(--accent)}
+  .pull-local-item .size{color:var(--muted);font-size:11px}
+  .pull-recom-item{
+    display:flex;align-items:center;gap:10px;
+    padding:8px 10px;background:var(--surface-2);border:1px solid var(--border-soft);
+    border-radius:3px;margin-bottom:4px;font-size:13px;
+  }
+  .pull-recom-item .name{color:var(--text);min-width:130px}
+  .pull-recom-item .meta{color:var(--muted);font-size:11px;flex:1}
+  .pull-recom-item .tag{
+    display:inline-block;padding:2px 6px;border-radius:2px;font-size:10px;
+    letter-spacing:.1em;background:rgba(77,255,180,.12);color:var(--accent);
+    border:1px solid var(--accent-dim);
+  }
+  .pull-recom-item .tag.weak{background:rgba(255,200,87,.10);color:var(--accent-2);border-color:var(--accent-2)}
+  .pull-recom-item .chinese{font-size:11px;color:var(--accent-2)}
+  .pull-recom-item .chinese.no{color:var(--muted)}
+  .pull-recom-item button{
+    font-family:var(--mono);background:rgba(77,255,180,.10);color:var(--accent);
+    border:1px solid var(--accent-dim);border-radius:3px;
+    padding:4px 10px;font-size:11px;cursor:pointer;letter-spacing:.08em;
+  }
+  .pull-recom-item button:hover{background:rgba(77,255,180,.20)}
+  .pull-recom-item button:disabled{opacity:.4;cursor:not-allowed}
+  .pull-status{font-size:12px;color:var(--accent-2);margin-bottom:6px;letter-spacing:.06em}
+  .pull-progress-bar{
+    width:100%;height:8px;background:var(--surface-2);border:1px solid var(--border-soft);
+    border-radius:4px;overflow:hidden;margin-bottom:8px;
+  }
+  .pull-progress-bar>div{
+    height:100%;background:var(--accent);width:0%;
+    transition:width .2s ease;
+  }
+  .pull-stop{
+    font-family:var(--mono);background:rgba(255,107,107,.12);color:var(--danger);
+    border:1px solid var(--danger);border-radius:3px;
+    padding:4px 12px;font-size:11px;cursor:pointer;letter-spacing:.1em;
+  }
+  .pull-stop:hover{background:rgba(255,107,107,.22)}
+  .pull-more-link{
+    color:var(--accent-dim);font-size:11px;text-decoration:none;letter-spacing:.1em;
+  }
+  .pull-more-link:hover{color:var(--accent)}
+
+  /* ===== Task 9: result warn bar (字数不达标) ===== */
+  .result-warn{margin:8px 0 0;padding:8px 12px;background:rgba(255,200,87,.08);border:1px solid var(--accent-2);border-radius:3px;display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--accent-2);font-size:12px;letter-spacing:.06em}
+  .result-warn.show{display:flex}
 </style>
 </head>
 <body>
@@ -393,7 +669,7 @@
         <div>MODEL / <span class="model" id="modelLabel">--</span></div>
         <div>LATENCY <span class="lat" id="lat">--ms</span></div>
         <div id="clock">--:--:--</div>
-        <div class="hint-line" id="hintLine">深度压缩需启动：bash start.sh</div>
+        <div class="hint-line" id="hintLine">深度压缩需后端：bash start.sh · 用 DeepSeek 时 DEEPSEEK_API_KEY=sk-xxx bash start.sh · 仅「深度精简」可纯前端离线</div>
       </div>
     </header>
 
@@ -417,11 +693,20 @@
           <div class="group">
             <span class="label">拆分粒度 · CHUNK SIZE</span>
             <div class="seg" id="sizeSeg">
-              <button type="button" data-size="500" class="active">500 字</button>
+              <button type="button" data-size="nosplit" class="active">仅精简</button>
               <button type="button" data-size="1000">1000 字</button>
+              <button type="button" data-size="500">500 字</button>
               <button type="button" data-size="custom">自定义</button>
-              <button type="button" data-size="nosplit">仅精简</button>
               <input type="number" id="customSize" value="800" min="50" max="10000" disabled placeholder="字数" />
+            </div>
+            <div class="first-chunk-row">
+              <label class="check"><input type="checkbox" id="optFirstChunk" /> 首片单独</label>
+              <div class="fc-mode" id="firstChunkMode">
+                <button type="button" data-mode="occupied" class="active">已占</button>
+                <button type="button" data-mode="direct">首片</button>
+              </div>
+              <input type="number" id="firstChunkSize" value="200" min="10" max="10000" disabled placeholder="字数" style="width:90px" />
+              <span class="hint" id="firstChunkHint">直接指定第一片字数，后续按上方上限</span>
             </div>
             <div class="hint" id="sizeHint">每片字符数严格不超过上限，自动在片尾断点处换片。</div>
           </div>
@@ -441,6 +726,10 @@
         <div class="deep-config" id="deepConfig">
           <div class="dc-row">
             <span class="dc-label">压缩比例</span>
+            <div class="target-mode-toggle" id="targetModeToggle">
+              <button type="button" id="targetModeRatio" class="active">比例</button>
+              <button type="button" id="targetModeChars">字数</button>
+            </div>
             <div class="ratio-group" id="ratioGroup">
               <button type="button" class="ratio-btn" data-ratio="0.3">30%</button>
               <button type="button" class="ratio-btn active" data-ratio="0.5">50%</button>
@@ -448,19 +737,54 @@
               <button type="button" class="ratio-btn" data-ratio="custom">自定义</button>
               <input type="number" id="customRatio" value="0.45" min="0.1" max="0.9" step="0.05" disabled placeholder="0.1-0.9" style="width:80px" />
             </div>
+            <input type="number" id="targetCharsInput" placeholder="如 1000" style="display:none;width:108px" min="50" />
+            <div class="ratio-hint" id="ratioHint">模型模式：算法阶段固定按 0.66 比例预处理</div>
           </div>
           <div class="dc-row">
             <span class="dc-label">模型选项</span>
             <label class="check" style="gap:8px"><input type="checkbox" id="optModel" checked /> 启用模型 <span class="soon">更深</span></label>
-            <select id="modelSel" style="cursor:pointer">
-              <option value="qwen2.5:1.5b" selected>qwen2.5:1.5b（好 · 慢）</option>
-              <option value="qwen2.5:0.5b">qwen2.5:0.5b（快 · 浅）</option>
+            <select id="providerSel" style="cursor:pointer">
+              <option value="ollama" selected>本地 · Ollama</option>
+              <option value="deepseek">API · DeepSeek</option>
+              <option value="custom">自定义 · OpenAI 兼容</option>
             </select>
+            <select id="modelSel" style="cursor:pointer">
+              <optgroup label="本地 Ollama">
+                <option value="qwen2.5:1.5b" selected>qwen2.5:1.5b（好 · 慢）</option>
+                <option value="qwen2.5:0.5b">qwen2.5:0.5b（快 · 浅）</option>
+              </optgroup>
+            </select>
+            <button id="btnOpenPullDialog" class="ta-tool" title="下载新模型">↓ 下载模型</button>
+            <a href="https://api-docs.deepseek.com/quick_start/pricing" target="_blank" rel="noopener" title="DeepSeek 价格文档" style="font-size:13px;color:var(--accent-dim);text-decoration:none;letter-spacing:.1em;align-self:center">?</a>
+          </div>
+          <div class="dc-row" id="customConfigRow" style="display:none;flex-direction:column;align-items:stretch;gap:8px;border-top:1px dashed var(--border-soft);padding-top:10px;margin-top:6px">
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <span class="dc-label" style="min-width:80px">Base URL</span>
+              <input type="text" id="customBaseUrl" placeholder="https://api.example.com 或 https://api.example.com/v1" style="flex:1;min-width:260px" />
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <span class="dc-label" style="min-width:80px">模型名</span>
+              <input type="text" id="customModel" placeholder="gpt-4o / claude-3-opus / qwen-max 等" style="flex:1;min-width:260px" />
+            </div>
+          </div>
+          <div class="dc-row" id="apiKeyRow" style="display:none">
+            <span class="dc-label">API Key</span>
+            <div style="position:relative;flex:1;min-width:260px">
+              <input type="password" id="apiKeyInput" placeholder="sk-... （仅存本机浏览器 localStorage）" style="width:100%;padding-right:38px" />
+              <button type="button" id="btnToggleKey" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);cursor:pointer;padding:4px 6px;font-size:14px" title="显示/隐藏">👁</button>
+            </div>
+            <select id="reasoningSel" style="cursor:pointer" title="推理强度（仅部分厂商支持）">
+              <option value="none">不思考</option>
+              <option value="high" selected>高（默认）</option>
+              <option value="max">最强</option>
+            </select>
+            <span id="reasoningHint" class="hint" style="display:none;color:var(--accent-2);font-size:12px">DeepSeek V4 仅支持 high/max</span>
           </div>
           <div class="dc-row">
             <span class="dc-label">服务地址</span>
-            <input type="text" id="svcInput" value="http://127.0.0.1:8787" placeholder="http://127.0.0.1:8787" style="width:260px" />
+            <input type="text" id="svcInput" value="" placeholder="留空=同源（推荐）或 http://127.0.0.1:8787" style="width:260px" />
             <button type="button" class="ta-tool" id="btnSaveSvc">保存重连</button>
+            <button type="button" class="ta-tool" id="btnStopSvc" title="停止后端服务进程">停止服务</button>
             <span class="hint" id="svcHint"></span>
           </div>
         </div>
@@ -478,6 +802,7 @@
 
         <div class="actions">
           <button class="btn btn-primary" id="btnSplit" disabled>拆分 →</button>
+          <button id="btnStop" class="ta-tool" style="display:none;background:rgba(255,107,107,.15);border-color:var(--danger);color:var(--danger)">■ 停止</button>
           <button class="btn btn-ghost" id="btnClear">清空</button>
         </div>
         <div class="form-msg" id="formMsg"></div>
@@ -487,6 +812,10 @@
     <section class="output">
       <div class="out-bar">
         <div class="out-stat" id="outStat">等待输入信号…</div>
+        <div class="grid-tools" id="gridTools" style="display:none">
+          <button type="button" class="copy-btn" id="btnExpandAll"><span class="ic">▾</span> 全部展开</button>
+          <button type="button" class="copy-btn" id="btnCollapseAll"><span class="ic">▴</span> 全部折叠</button>
+        </div>
         <button class="btn-small" id="btnCopyAll" style="display:none">复制全部（按顺序）</button>
       </div>
 
@@ -495,6 +824,10 @@
         <div class="panel-head">
           <span><span class="tag">[02]</span> 压缩结果 · DEEP COMPRESS</span>
           <span id="resultBadge">--</span>
+        </div>
+        <div class="result-warn" id="resultWarn" style="display:none">
+          <span id="resultWarnMsg"></span>
+          <button type="button" class="btn-small" id="btnRetryPreset">换一套提示词重试</button>
         </div>
         <div class="panel-body">
           <div class="stats-grid">
@@ -524,12 +857,40 @@
               <div class="bar-track"><div class="bar-fill model" id="barModel"></div></div>
             </div>
           </div>
+          <div class="result-view-tabs" id="resultViewTabs" style="display:none">
+            <button type="button" class="diff-tab" id="btnViewAlgo">算法</button>
+            <button type="button" class="diff-tab active" id="btnViewModel">模型</button>
+          </div>
           <div class="result-text-box" id="resultText">--</div>
+          <div class="diff-view" id="diffView" style="display:none"></div>
+          <div class="diff-tabs" id="diffTabs" style="display:none">
+            <span class="diff-tabs-label">DIFF：</span>
+            <button type="button" class="diff-tab" data-pair="raw-clean">原文→精简</button>
+            <button type="button" class="diff-tab" data-pair="raw-algo">原文→算法</button>
+            <button type="button" class="diff-tab active" data-pair="raw-model">原文→模型</button>
+            <button type="button" class="diff-tab" data-pair="algo-model">算法→模型</button>
+            <button type="button" class="diff-tab diff-tab-exit" id="btnDiffExit">退出 ✕</button>
+          </div>
           <div class="result-foot">
             <span style="font-size:11px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase" id="resultCnt">--</span>
+            <button class="copy-btn" id="btnDiff">Diff 对比</button>
             <button class="copy-btn" id="btnCopyResult">复制结果</button>
+            <span style="flex:1"></span>
+            <button type="button" class="copy-btn" id="btnReSplit" title="对当前结果再拆分">⇄ 再拆分</button>
+            <button type="button" class="copy-btn" id="btnMerge" title="合并多卡片成一张">⊟ 合并</button>
+          </div>
+          <div class="resplit-input" id="resplitInput" style="display:none">
+            <label>字数 <input type="number" id="resplitSize" value="500" min="50" style="width:80px" /></label>
+            <label>首片 <input type="number" id="resplitFirst" value="0" min="0" style="width:80px" /></label>
+            <button type="button" class="copy-btn" id="btnReSplitConfirm">确认</button>
+            <button type="button" class="copy-btn" id="btnReSplitCancel">取消</button>
           </div>
         </div>
+      </div>
+
+      <div id="resultStack" class="result-stack" style="display:none">
+        <div class="stack-tabs" id="stackTabs"></div>
+        <div class="stack-body" id="stackBody"></div>
       </div>
 
       <!-- 卡片网格（拆分模式） -->
@@ -541,42 +902,207 @@
       </div>
     </section>
 
+    <section class="extra-section">
+      <!-- ===== Prompt 编辑面板 ===== -->
+      <div class="panel prompt-panel">
+        <div class="panel-head">
+          <span><span class="tag">[03]</span> Prompt 设置 · CUSTOM PROMPT</span>
+          <span id="promptBadge" class="prompt-badge default">DEFAULT</span>
+        </div>
+        <div class="panel-body">
+          <div class="prompt-row">
+            <div class="prompt-field">
+              <div class="label">
+                <span>System · 系统提示词</span>
+                <span class="ph">定义角色与硬性规则</span>
+              </div>
+              <textarea id="promptSystem" spellcheck="false" placeholder="加载默认提示词中…"></textarea>
+            </div>
+            <div class="prompt-field">
+              <div class="label">
+                <span>User · 用户模板</span>
+                <span class="ph">占位符 {text} {target} {orig} {cut}</span>
+              </div>
+              <textarea id="promptUser" spellcheck="false" placeholder="加载默认提示词中…"></textarea>
+            </div>
+          </div>
+          <div class="prompt-actions">
+            <button type="button" class="btn-small" id="btnPromptSave">保存到本机</button>
+            <button type="button" class="btn-small" id="btnPromptReset">恢复默认</button>
+            <button type="button" class="btn-small" id="btnPromptClear">清空自定义</button>
+            <span class="hint" id="promptHint">提示：留空使用后端默认；保存后每次压缩都会带上自定义提示词。</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 运行日志面板 ===== -->
+      <div class="panel log-panel">
+        <div class="panel-head">
+          <span><span class="tag">[04]</span> 运行日志 · RUN LOG</span>
+          <span id="logBadge" style="color:var(--muted)">— —</span>
+        </div>
+        <div class="panel-body">
+          <div class="log-toolbar">
+            <div class="log-summary" id="logSummary">尚未运行</div>
+            <div class="log-toggles">
+              <button type="button" class="log-toggle active" data-logview="entries">日志条目</button>
+              <button type="button" class="log-toggle" data-logview="prompt">Prompt</button>
+              <button type="button" class="log-toggle" data-logview="model">模型响应</button>
+              <button type="button" class="log-toggle" data-logview="raw">原始 JSON</button>
+            </div>
+          </div>
+
+          <!-- 日志条目视图 -->
+          <div class="log-body" id="logViewEntries">
+            <div class="log-empty">运行后这里会显示每一步的日志（清洗 / 算法 / 模型 / 完成）</div>
+          </div>
+
+          <!-- Prompt 视图 -->
+          <div class="log-body" id="logViewPrompt" style="display:none">
+            <div class="log-empty">未调用模型</div>
+          </div>
+
+          <!-- 模型响应视图 -->
+          <div class="log-body" id="logViewModel" style="display:none">
+            <div class="log-empty">未调用模型</div>
+          </div>
+
+          <!-- 原始 JSON 视图 -->
+          <div class="log-body" id="logViewRaw" style="display:none">
+            <div class="log-empty">未运行</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <footer class="foot">
       <span>AI.TXT · SPLITTER + DEEP COMPRESSOR</span>
       <span>本地运行 · 不上传 · <a href="index.html">原版拆分器</a></span>
     </footer>
   </div>
 
+  <!-- Task 5: 下载 Ollama 模型对话框 -->
+  <div id="pullDialog" class="modal-overlay" style="display:none">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>下载 Ollama 模型</h3>
+        <button id="btnClosePullDialog" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- 已下载列表 -->
+        <div class="pull-section">
+          <div class="pull-section-title">已下载</div>
+          <div id="pullLocalList">加载中...</div>
+        </div>
+        <!-- 推荐模型 -->
+        <div class="pull-section">
+          <div class="pull-section-title">推荐模型（点击下载）</div>
+          <div id="pullRecomList"></div>
+        </div>
+        <!-- 自定义输入 -->
+        <div class="pull-section">
+          <div class="pull-section-title">自定义模型名</div>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="pullCustomName" placeholder="如 qwen2.5:7b" style="flex:1" />
+            <button id="btnPullCustom">下载</button>
+          </div>
+        </div>
+        <!-- 进度区 -->
+        <div id="pullProgress" style="display:none">
+          <div class="pull-status" id="pullStatusText">准备中...</div>
+          <div class="pull-progress-bar"><div id="pullProgressFill"></div></div>
+          <button id="btnPullStop" class="pull-stop">停止</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a href="https://ollama.com/library" target="_blank" class="pull-more-link">更多模型 →</a>
+      </div>
+    </div>
+  </div>
+
 <script>
 (function(){
   "use strict";
+
+  // ===== Task 6: Ollama 推荐模型列表 =====
+  var OLLAMA_RECOMMENDED_MODELS = [
+    {name:'qwen2.5:0.5b', size:'1GB', chinese:true, scene:'最快，测试用', recom:'测试'},
+    {name:'qwen2.5:1.5b', size:'1.5GB', chinese:true, scene:'中文压缩推荐（默认）', recom:'推荐'},
+    {name:'qwen2.5:3b', size:'2GB', chinese:true, scene:'更强，长文本推荐', recom:'推荐'},
+    {name:'qwen2.5:7b', size:'4.7GB', chinese:true, scene:'专业压缩，需 8GB+ 内存', recom:'强'},
+    {name:'qwen2.5:14b', size:'9GB', chinese:true, scene:'最强，需 16GB+ 内存', recom:'最强'},
+    {name:'llama3.2:3b', size:'2GB', chinese:false, scene:'英文强', recom:'英文'},
+    {name:'llama3.1:8b', size:'4.9GB', chinese:false, scene:'英文强，需 8GB+ 内存', recom:'英文'},
+    {name:'phi3:mini', size:'2.2GB', chinese:false, scene:'微软出品，逻辑强', recom:'逻辑'},
+    {name:'gemma2:2b', size:'1.6GB', chinese:false, scene:'Google 出品，轻量', recom:'轻量'},
+    {name:'yi:6b', size:'3.5GB', chinese:true, scene:'零一万物，中文强', recom:'中文'}
+  ];
 
   // ===== elements =====
   var $src=document.getElementById("src");
   var $total=document.getElementById("total");
   var $sizeSeg=document.getElementById("sizeSeg");
   var $customSize=document.getElementById("customSize");
+  var $optFirstChunk=document.getElementById("optFirstChunk");
+  var $firstChunkMode=document.getElementById("firstChunkMode");
+  var $firstChunkSize=document.getElementById("firstChunkSize");
+  var $firstChunkHint=document.getElementById("firstChunkHint");
+  var $btnDiff=document.getElementById("btnDiff");
+  var $diffView=document.getElementById("diffView");
+  var $resultText=document.getElementById("resultText");
   var $sizeHint=document.getElementById("sizeHint");
   var $optNL=document.getElementById("optNL");
   var $optWS=document.getElementById("optWS");
   var $optMD=document.getElementById("optMD");
   var $optDeep=document.getElementById("optDeep");
   var $optModel=document.getElementById("optModel");
+  var $providerSel=document.getElementById("providerSel");
   var $modelSel=document.getElementById("modelSel");
+  var $customConfigRow=document.getElementById("customConfigRow");
+  var $customBaseUrl=document.getElementById("customBaseUrl");
+  var $customModel=document.getElementById("customModel");
+  var $apiKeyRow=document.getElementById("apiKeyRow");
+  var $apiKeyInput=document.getElementById("apiKeyInput");
+  var $btnToggleKey=document.getElementById("btnToggleKey");
+  var $reasoningSel=document.getElementById("reasoningSel");
+  var $reasoningHint=document.getElementById("reasoningHint");
   var $deepConfig=document.getElementById("deepConfig");
   var $ratioGroup=document.getElementById("ratioGroup");
+  var $ratioHint=document.getElementById("ratioHint");
   var $customRatio=document.getElementById("customRatio");
+  // Task 3: 目标字数模式切换
+  var $targetModeToggle=document.getElementById("targetModeToggle");
+  var $targetModeRatio=document.getElementById("targetModeRatio");
+  var $targetModeChars=document.getElementById("targetModeChars");
+  var $targetCharsInput=document.getElementById("targetCharsInput");
   var $svcInput=document.getElementById("svcInput");
   var $btnSaveSvc=document.getElementById("btnSaveSvc");
+  var $btnStopSvc=document.getElementById("btnStopSvc");
   var $svcHint=document.getElementById("svcHint");
   var $btnSplit=document.getElementById("btnSplit");
+  var $btnStop=document.getElementById("btnStop");
   var $btnClear=document.getElementById("btnClear");
+  // Task 5: 下载模型对话框
+  var $btnOpenPullDialog=document.getElementById("btnOpenPullDialog");
+  var $pullDialog=document.getElementById("pullDialog");
+  var $btnClosePullDialog=document.getElementById("btnClosePullDialog");
+  var $pullLocalList=document.getElementById("pullLocalList");
+  var $pullRecomList=document.getElementById("pullRecomList");
+  var $pullCustomName=document.getElementById("pullCustomName");
+  var $btnPullCustom=document.getElementById("btnPullCustom");
+  var $pullProgress=document.getElementById("pullProgress");
+  var $pullStatusText=document.getElementById("pullStatusText");
+  var $pullProgressFill=document.getElementById("pullProgressFill");
+  var $btnPullStop=document.getElementById("btnPullStop");
   var $btnSelectAll=document.getElementById("btnSelectAll");
   var $btnInlineClear=document.getElementById("btnInlineClear");
   var $formMsg=document.getElementById("formMsg");
   var $grid=document.getElementById("grid");
   var $outStat=document.getElementById("outStat");
   var $btnCopyAll=document.getElementById("btnCopyAll");
+  var $gridTools=document.getElementById("gridTools");
+  var $btnExpandAll=document.getElementById("btnExpandAll");
+  var $btnCollapseAll=document.getElementById("btnCollapseAll");
   var $modeBadge=document.getElementById("modeBadge");
   var $lat=document.getElementById("lat");
   var $clock=document.getElementById("clock");
@@ -587,6 +1113,9 @@
   // compress result elements
   var $compressResult=document.getElementById("compressResult");
   var $resultBadge=document.getElementById("resultBadge");
+  var $resultWarn=document.getElementById("resultWarn");
+  var $resultWarnMsg=document.getElementById("resultWarnMsg");
+  var $btnRetryPreset=document.getElementById("btnRetryPreset");
   var $statOrig=document.getElementById("statOrig");
   var $statAlgo=document.getElementById("statAlgo");
   var $statModel=document.getElementById("statModel");
@@ -596,19 +1125,126 @@
   var $barModel=document.getElementById("barModel");
   var $barAlgoLbl=document.getElementById("barAlgoLbl");
   var $barModelLbl=document.getElementById("barModelLbl");
-  var $resultText=document.getElementById("resultText");
   var $resultCnt=document.getElementById("resultCnt");
   var $btnCopyResult=document.getElementById("btnCopyResult");
+  var $resultViewTabs=document.getElementById("resultViewTabs");
+  var $btnViewAlgo=document.getElementById("btnViewAlgo");
+  var $btnViewModel=document.getElementById("btnViewModel");
+  var $resultStack=document.getElementById("resultStack");
+  var $stackTabs=document.getElementById("stackTabs");
+  var $stackBody=document.getElementById("stackBody");
+  var $btnReSplit=document.getElementById("btnReSplit");
+  var $btnMerge=document.getElementById("btnMerge");
+  var $resplitInput=document.getElementById("resplitInput");
+  var $resplitSize=document.getElementById("resplitSize");
+  var $resplitFirst=document.getElementById("resplitFirst");
+  var $btnReSplitConfirm=document.getElementById("btnReSplitConfirm");
+  var $btnReSplitCancel=document.getElementById("btnReSplitCancel");
   var $compressProgress=document.getElementById("compressProgress");
   var $modelTimer=document.getElementById("modelTimer");
 
+  // prompt 编辑 + 日志 elements
+  var $promptSystem=document.getElementById("promptSystem");
+  var $promptUser=document.getElementById("promptUser");
+  var $promptBadge=document.getElementById("promptBadge");
+  var $btnPromptSave=document.getElementById("btnPromptSave");
+  var $btnPromptReset=document.getElementById("btnPromptReset");
+  var $btnPromptClear=document.getElementById("btnPromptClear");
+  var $promptHint=document.getElementById("promptHint");
+  var $logBadge=document.getElementById("logBadge");
+  var $logSummary=document.getElementById("logSummary");
+  var $logViewEntries=document.getElementById("logViewEntries");
+  var $logViewPrompt=document.getElementById("logViewPrompt");
+  var $logViewModel=document.getElementById("logViewModel");
+  var $logViewRaw=document.getElementById("logViewRaw");
+
   // ===== state =====
   var state={
-    size:500, custom:false, nosplit:false, lastChunks:[],
-    baseURL: localStorage.getItem("compressor.baseURL") || "http://127.0.0.1:8787",
-    healthy:false, model:"qwen2.5:1.5b",
+    size:"nosplit", custom:false, nosplit:true, lastChunks:[],
+    firstChunkEnabled:false, firstChunkMode:"occupied", firstChunkSize:200,
+    diffOn:false, diffPair:"raw-model",
+    rawText:"", cleanedText:"", algoText:"", modelText:"",
+    resultView: localStorage.getItem("aitxt.resultView") || "model",
+    resultStack: [],
+    activeResultTabId: null,
+    resplitCounter: 0,
+    mergeCounter: 0,
+    baseURL: localStorage.getItem("compressor.baseURL") || "",
+    healthy:false,
+    // provider 配置存 localStorage，方便用户切换
+    provider: localStorage.getItem("aitxt.provider") || "ollama",
+    model: localStorage.getItem("aitxt.model") || "qwen2.5:1.5b",
+    baseUrl: localStorage.getItem("aitxt.baseUrl") || "",
+    apiKey: localStorage.getItem("aitxt.apiKey") || "",
+    reasoningEffort: (function(){
+      // 旧值迁移：low/medium → high，xhigh → max（DeepSeek V4 仅支持 high/max/none）
+      var v = localStorage.getItem("aitxt.reasoningEffort") || "high";
+      if(v === "low" || v === "medium"){ v = "high"; localStorage.setItem("aitxt.reasoningEffort", v); }
+      else if(v === "xhigh"){ v = "max"; localStorage.setItem("aitxt.reasoningEffort", v); }
+      return v;
+    })(),
+    deepseekReady:false,
     ratio:0.5, customRatio:false,
-    useModel:true, processing:false
+    useModel:true, processing:false,
+    // Task 3: 目标字数模式（ratio=比例 / chars=字数）
+    targetMode: localStorage.getItem("aitxt.targetMode") || 'ratio',
+    targetChars: localStorage.getItem("aitxt.targetChars") || '',
+    // 自定义提示词（空字符串=用后端默认）
+    customSystem: localStorage.getItem("aitxt.customSystem") || "",
+    customUserTemplate: localStorage.getItem("aitxt.customUserTemplate") || "",
+    // 默认提示词（从后端拉取，供「恢复默认」按钮使用）
+    defaultSystem: "",
+    defaultUserTemplate: "",
+    promptLoaded: false,
+    // 最近一次运行的完整日志
+    lastLog: null,
+    logView: "entries",
+    // SSE 流式上下文
+    streamContext: null,    // 保存 ModelStart 时的 system_prompt/user_prompt/参数
+    lastAlgoText: '',       // 保存算法输出（用于重试）
+    lastTarget: 0,          // 保存目标字数（用于字数检查）
+    currentPreset: 'standard', // 当前使用的预设
+    // Task 1b: 流式压缩手动停止
+    currentAbortController: null,  // 当前流式请求的 AbortController
+    streamStartTime: 0             // 流式开始时间戳（用于日志 t 字段）
+  };
+  // 各 provider 对应的模型选项（启动时优先读 localStorage，刷新页面不丢失已下载的 ollama 模型）
+  var PROVIDER_MODELS = (function(){
+    var defaults = {
+      ollama:[
+        {value:"qwen2.5:1.5b", label:"qwen2.5:1.5b（好 · 慢）", selected:true},
+        {value:"qwen2.5:0.5b", label:"qwen2.5:0.5b（快 · 浅）"},
+        {value:"qwen2.5:3b", label:"qwen2.5:3b（更强 · 更慢）"},
+        {value:"llama3.2:3b", label:"llama3.2:3b（英文强）"}
+      ],
+      deepseek:[
+        {value:"deepseek-v4-flash", label:"DeepSeek V4 Flash（快 · 推荐）", selected:true},
+        {value:"deepseek-v4-pro", label:"DeepSeek V4 Pro（强 · 慢）"}
+      ],
+      custom:[
+        {value:"", label:"（自定义模型名在下方填写）", selected:true}
+      ]
+    };
+    try{
+      var saved = localStorage.getItem("aitxt.ollamaModels");
+      if(saved){
+        var p = JSON.parse(saved);
+        if(p && p.ollama && Array.isArray(p.ollama)){
+          return {
+            ollama: p.ollama,
+            deepseek: p.deepseek || defaults.deepseek,
+            custom: p.custom || defaults.custom
+          };
+        }
+      }
+    }catch(e){}
+    return defaults;
+  })();
+  // 各 provider 的默认 base_url（custom 留空，用户填）
+  var PROVIDER_BASE_URL={
+    ollama:"",
+    deepseek:"https://api.deepseek.com",
+    custom:""
   };
   $svcInput.value=state.baseURL;
   $modelSel.value=state.model;
@@ -657,12 +1293,61 @@
     $sizeHint.textContent = state.nosplit
       ? "仅按清洗规则精简文本，不拆分，输出为单张卡片。"
       : "每片字符数严格不超过上限，自动在片尾断点处换片。";
+    updateFirstChunkHint();
     hideMsg();
   });
   $customSize.addEventListener("input",function(){
     if(state.custom){
       state.size=parseInt($customSize.value,10)||0;
       $modeBadge.textContent="MODE / "+($customSize.value||"--");
+      updateFirstChunkHint();
+      hideMsg();
+    }
+  });
+
+  // ===== first chunk override =====
+  function updateFirstChunkHint(){
+    if(state.firstChunkMode==="occupied"){
+      var occ=parseInt($firstChunkSize.value,10)||0;
+      var remain=Math.max(0, state.size-occ);
+      $firstChunkHint.textContent="已占 "+occ+" 字 → 首片剩余 "+remain+" 字，后续按上限 "+state.size;
+    }else{
+      $firstChunkHint.textContent="直接指定第一片字数，后续按上方上限 "+state.size;
+    }
+  }
+  // 根据当前模式计算首片实际 limit
+  function computeFirstLimit(){
+    if(!state.firstChunkEnabled) return 0;
+    var v=parseInt($firstChunkSize.value,10)||0;
+    if(state.firstChunkMode==="occupied"){
+      v=state.size-v; // 上限减去已占
+    }
+    return Math.max(0, Math.min(v, state.size));
+  }
+  $optFirstChunk.addEventListener("change",function(){
+    state.firstChunkEnabled=$optFirstChunk.checked;
+    $firstChunkSize.disabled=!state.firstChunkEnabled;
+    $firstChunkMode.classList.toggle("disabled",!state.firstChunkEnabled);
+    if(state.firstChunkEnabled){
+      $firstChunkSize.focus();
+      state.firstChunkSize=parseInt($firstChunkSize.value,10)||0;
+    }
+    updateFirstChunkHint();
+    hideMsg();
+  });
+  $firstChunkMode.addEventListener("click",function(e){
+    var b=e.target.closest("button"); if(!b) return;
+    var m=b.getAttribute("data-mode");
+    [].forEach.call($firstChunkMode.querySelectorAll("button"),function(x){x.classList.remove("active")});
+    b.classList.add("active");
+    state.firstChunkMode=m;
+    updateFirstChunkHint();
+    hideMsg();
+  });
+  $firstChunkSize.addEventListener("input",function(){
+    if(state.firstChunkEnabled){
+      state.firstChunkSize=parseInt($firstChunkSize.value,10)||0;
+      updateFirstChunkHint();
       hideMsg();
     }
   });
@@ -680,8 +1365,140 @@
   $optModel.addEventListener("change",function(){
     state.useModel=$optModel.checked;
     $modelSel.disabled=!state.useModel;
+    $providerSel.disabled=!state.useModel;
+    updateProviderUI();
+    setRatioGroupDisabled(state.useModel);
   });
-  $modelSel.addEventListener("change",function(){ state.model=$modelSel.value; });
+  // Task 8: 模型模式时禁用压缩比例（算法阶段固定 0.66）
+  function setRatioGroupDisabled(disabled){
+    if(disabled){
+      $ratioGroup.classList.add("disabled-group");
+      var btns=$ratioGroup.querySelectorAll("button");
+      for(var i=0;i<btns.length;i++){ btns[i].disabled=true; }
+      $customRatio.disabled=true;
+      $ratioHint.classList.add("show");
+    }else{
+      $ratioGroup.classList.remove("disabled-group");
+      var btns2=$ratioGroup.querySelectorAll("button");
+      for(var j=0;j<btns2.length;j++){ btns2[j].disabled=false; }
+      // 自定义比例输入框：仅当当前选中"自定义"按钮时才启用
+      var activeCustom=$ratioGroup.querySelector('.ratio-btn[data-ratio="custom"].active');
+      $customRatio.disabled = !activeCustom;
+      $ratioHint.classList.remove("show");
+    }
+    // Task 3.5: 字数模式仅在启用模型时可用
+    setTargetModeDisabled(!disabled);
+    updateModeBadge();
+  }
+  // Task 3: 目标字数模式 UI 同步
+  function applyTargetModeUI(){
+    if(state.targetMode === 'chars'){
+      $targetModeRatio.classList.remove("active");
+      $targetModeChars.classList.add("active");
+      $targetCharsInput.style.display = '';
+      $targetCharsInput.value = state.targetChars || '';
+    }else{
+      state.targetMode = 'ratio';
+      $targetModeRatio.classList.add("active");
+      $targetModeChars.classList.remove("active");
+      $targetCharsInput.style.display = 'none';
+    }
+  }
+  // Task 3.5: 禁用/启用字数模式切换器和输入框
+  function setTargetModeDisabled(disabled){
+    if(disabled){
+      $targetModeToggle.classList.add("disabled");
+      $targetModeRatio.disabled = true;
+      $targetModeChars.disabled = true;
+      $targetCharsInput.disabled = true;
+      // 禁用时若当前为字数模式，切回比例模式
+      if(state.targetMode === 'chars'){
+        state.targetMode = 'ratio';
+        localStorage.setItem("aitxt.targetMode", 'ratio');
+        applyTargetModeUI();
+      }
+    }else{
+      $targetModeToggle.classList.remove("disabled");
+      $targetModeRatio.disabled = false;
+      $targetModeChars.disabled = false;
+      $targetCharsInput.disabled = false;
+    }
+  }
+  function refreshModelOptions(){
+    var list=PROVIDER_MODELS[state.provider]||PROVIDER_MODELS.ollama;
+    var groupLabel = state.provider==='deepseek'?'DeepSeek API'
+      : state.provider==='custom'?'自定义厂商'
+      : '本地 Ollama';
+    var html='<optgroup label="'+groupLabel+'">';
+    for(var i=0;i<list.length;i++){
+      html+='<option value="'+list[i].value+'"'+(list[i].selected?' selected':'')+'>'+list[i].label+'</option>';
+    }
+    html+='</optgroup>';
+    $modelSel.innerHTML=html;
+    // 保留当前选择，若不在该 provider 列表里则用默认
+    var found=false;
+    for(var j=0;j<list.length;j++){
+      if(list[j].value===state.model){found=true;break;}
+    }
+    if(!found) state.model=list[0].value;
+    $modelSel.value=state.model;
+    localStorage.setItem("aitxt.model", state.model);
+  }
+  function updateProviderUI(){
+    var p=state.provider;
+    var isApi = (p === 'deepseek' || p === 'custom');
+    var isCustom = (p === 'custom');
+    // API Key 行：deepseek 和 custom 都显示
+    $apiKeyRow.style.display = isApi ? 'flex' : 'none';
+    // 自定义配置行：仅 custom 显示
+    $customConfigRow.style.display = isCustom ? 'flex' : 'none';
+    // 自定义模式时 modelSel 禁用（用文本输入框）
+    $modelSel.disabled = isCustom || !state.useModel;
+    // reasoning 提示：仅 deepseek 显示（V4 仅支持 high/max）
+    if($reasoningHint) $reasoningHint.style.display = (p === 'deepseek') ? 'inline' : 'none';
+    // 自定义 base_url 输入框联动
+    if (isCustom) {
+      $customBaseUrl.value = state.baseUrl || PROVIDER_BASE_URL.custom;
+      $customModel.value = state.model || '';
+    } else if (p === 'deepseek') {
+      // deepseek 时若 baseUrl 为空，自动用默认值
+      if (!state.baseUrl) state.baseUrl = PROVIDER_BASE_URL.deepseek;
+    }
+  }
+  $providerSel.addEventListener("change",function(){
+    state.provider=$providerSel.value;
+    localStorage.setItem("aitxt.provider", state.provider);
+    refreshModelOptions();
+    updateProviderUI();
+    updateModeBadge();
+  });
+  $modelSel.addEventListener("change",function(){
+    state.model=$modelSel.value;
+    localStorage.setItem("aitxt.model", state.model);
+  });
+  // 自定义配置输入框联动
+  $customBaseUrl.addEventListener("input",function(){
+    state.baseUrl=$customBaseUrl.value.trim();
+    localStorage.setItem("aitxt.baseUrl", state.baseUrl);
+  });
+  $customModel.addEventListener("input",function(){
+    state.model=$customModel.value.trim();
+    localStorage.setItem("aitxt.model", state.model);
+  });
+  // API Key 密码框
+  $apiKeyInput.addEventListener("input",function(){
+    state.apiKey=$apiKeyInput.value;
+    localStorage.setItem("aitxt.apiKey", state.apiKey);
+  });
+  $btnToggleKey.addEventListener("click",function(){
+    var isPwd = $apiKeyInput.type === 'password';
+    $apiKeyInput.type = isPwd ? 'text' : 'password';
+    $btnToggleKey.textContent = isPwd ? '🙈' : '👁';
+  });
+  $reasoningSel.addEventListener("change",function(){
+    state.reasoningEffort=$reasoningSel.value;
+    localStorage.setItem("aitxt.reasoningEffort", state.reasoningEffort);
+  });
 
   // ===== ratio selector =====
   $ratioGroup.addEventListener("click",function(e){
@@ -703,6 +1520,28 @@
     return state.customRatio ? (parseFloat($customRatio.value)||0.5) : state.ratio;
   }
 
+  // ===== Task 3: 目标字数模式切换 =====
+  $targetModeRatio.addEventListener("click", function(){
+    if($targetModeRatio.disabled) return;
+    state.targetMode = 'ratio';
+    localStorage.setItem("aitxt.targetMode", 'ratio');
+    applyTargetModeUI();
+    updateModeBadge();
+  });
+  $targetModeChars.addEventListener("click", function(){
+    if($targetModeChars.disabled) return;
+    state.targetMode = 'chars';
+    localStorage.setItem("aitxt.targetMode", 'chars');
+    applyTargetModeUI();
+    $targetCharsInput.focus();
+    updateModeBadge();
+  });
+  $targetCharsInput.addEventListener("input", function(){
+    state.targetChars = $targetCharsInput.value || '';
+    localStorage.setItem("aitxt.targetChars", state.targetChars);
+    updateModeBadge();
+  });
+
   // ===== service url =====
   $btnSaveSvc.addEventListener("click",function(){
     var u=$svcInput.value.trim().replace(/\/+$/,"");
@@ -714,15 +1553,276 @@
     if(e.key==="Enter"){ $btnSaveSvc.click(); }
   });
 
+  // ===== stop service（页面内停止后端进程） =====
+  $btnStopSvc.addEventListener("click",async function(){
+    if(!confirm("确认停止后端服务？停止后深度压缩将不可用，需在终端重新运行 bash start.sh 启动。")) return;
+    $btnStopSvc.disabled=true;
+    $btnStopSvc.textContent="停止中…";
+    try{
+      await fetch(state.baseURL+"/shutdown",{method:"POST"});
+    }catch(e){ /* 进程退出会断连，忽略 */ }
+    state.healthy=false;
+    renderStatus();
+    $svcHint.textContent="✓ 服务已停止，终端可关闭";
+    $svcHint.style.color="var(--danger)";
+    $btnStopSvc.textContent="已停止";
+    setTimeout(function(){ $btnStopSvc.disabled=false; $btnStopSvc.textContent="停止服务"; },2000);
+  });
+
   function updateModeBadge(){
     var parts=[];
     parts.push(state.nosplit?"NOSPLIT":("SPLIT "+state.size));
     if($optDeep.checked){
-      parts.push("DEEP "+Math.round(currentRatio()*100)+"%");
+      // 模型模式时算法阶段固定 0.66，否则用用户选择的比例
+      var r = state.useModel ? 0.66 : currentRatio();
+      // Task 3: 字数模式时显示目标字数
+      if(state.useModel && state.targetMode === 'chars' && state.targetChars){
+        parts.push("DEEP "+state.targetChars+"字");
+      }else{
+        parts.push("DEEP "+Math.round(r*100)+"%");
+      }
       parts.push(state.useModel?"MODEL":"ALGO");
     }
     $modeBadge.textContent="MODE / "+parts.join(" · ");
   }
+
+  // ===== Task 5: 下载 Ollama 模型对话框 =====
+  var pullAbortController = null;  // 用于停止 pull 流
+  function openPullDialog(){
+    $pullDialog.style.display = 'flex';
+    loadLocalModels();
+    renderRecomList();
+    // 重置进度区
+    $pullProgress.style.display = 'none';
+    $pullProgressFill.style.width = '0%';
+    $pullStatusText.textContent = '准备中...';
+  }
+  function closePullDialog(){
+    $pullDialog.style.display = 'none';
+    // 关闭时若有 pull 进行中，停止它
+    if(pullAbortController){
+      pullAbortController.abort();
+      pullAbortController = null;
+    }
+  }
+  // 加载已下载模型列表
+  async function loadLocalModels(){
+    $pullLocalList.textContent = '加载中...';
+    try{
+      var res = await fetch(state.baseURL + '/ollama/tags', {method:'GET'});
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+      var models = (data && data.models) || [];
+      if(models.length === 0){
+        $pullLocalList.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">暂无已下载模型</div>';
+        return;
+      }
+      var html = '';
+      for(var i = 0; i < models.length; i++){
+        var m = models[i];
+        var name = m.name || m.model || '';
+        var size = m.size ? (m.size/1024/1024/1024).toFixed(1)+'GB' : '';
+        html += '<div class="pull-local-item"><span class="name">'+esc(name)+'</span><span class="size">'+esc(size)+'</span></div>';
+      }
+      $pullLocalList.innerHTML = html;
+    }catch(e){
+      $pullLocalList.innerHTML = '<div style="color:var(--danger);font-size:12px;padding:6px 0">加载失败：'+esc(e.message||e)+'</div>';
+    }
+  }
+  // 渲染推荐模型列表
+  function renderRecomList(){
+    var html = '';
+    for(var i = 0; i < OLLAMA_RECOMMENDED_MODELS.length; i++){
+      var m = OLLAMA_RECOMMENDED_MODELS[i];
+      var tagCls = (m.recom === '测试' || m.recom === '英文' || m.recom === '逻辑' || m.recom === '轻量') ? 'weak' : '';
+      html += '<div class="pull-recom-item">';
+      html += '<span class="name">'+esc(m.name)+'</span>';
+      html += '<span class="meta">'+esc(m.size)+'</span>';
+      html += '<span class="chinese'+(m.chinese?'':' no')+'">'+(m.chinese?'中文':'英文')+'</span>';
+      html += '<span class="meta">'+esc(m.scene)+'</span>';
+      html += '<span class="tag '+tagCls+'">'+esc(m.recom)+'</span>';
+      html += '<button type="button" data-model="'+esc(m.name)+'">下载</button>';
+      html += '</div>';
+    }
+    $pullRecomList.innerHTML = html;
+    // 绑定下载按钮
+    var btns = $pullRecomList.querySelectorAll('button');
+    for(var j = 0; j < btns.length; j++){
+      btns[j].addEventListener('click', function(){
+        var name = this.getAttribute('data-model');
+        pullModel(name);
+      });
+    }
+  }
+  // 拉取模型（SSE 流式）
+  async function pullModel(name){
+    if(!name || !name.trim()) return;
+    name = name.trim();
+    // 若有正在进行的 pull，先停止
+    if(pullAbortController){
+      pullAbortController.abort();
+      pullAbortController = null;
+    }
+    $pullProgress.style.display = 'block';
+    $pullProgressFill.style.width = '0%';
+    $pullStatusText.textContent = '准备下载 ' + name + ' ...';
+    $btnPullStop.disabled = false;
+    // 禁用所有下载按钮
+    var btns = $pullRecomList.querySelectorAll('button');
+    for(var i = 0; i < btns.length; i++){ btns[i].disabled = true; }
+    $btnPullCustom.disabled = true;
+    pullAbortController = new AbortController();
+    try{
+      var res = await fetch(state.baseURL + '/ollama/pull', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: name}),
+        signal: pullAbortController.signal
+      });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      if(!res.body) throw new Error('ReadableStream not supported');
+      var reader = res.body.getReader();
+      var decoder = new TextDecoder('utf-8');
+      var buffer = '';
+      while(true){
+        var chunk = await reader.read();
+        if(chunk.done) break;
+        buffer += decoder.decode(chunk.value, {stream:true});
+        var parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+        for(var i2 = 0; i2 < parts.length; i2++){
+          var lines = parts[i2].split('\n');
+          for(var j2 = 0; j2 < lines.length; j2++){
+            if(lines[j2].indexOf('data: ') === 0){
+              handlePullEvent(lines[j2].slice(6), name);
+            }
+          }
+        }
+      }
+      // 处理剩余 buffer
+      if(buffer.trim()){
+        var lines2 = buffer.split('\n');
+        for(var k = 0; k < lines2.length; k++){
+          if(lines2[k].indexOf('data: ') === 0){
+            handlePullEvent(lines2[k].slice(6), name);
+          }
+        }
+      }
+    }catch(e){
+      if(e && e.name === 'AbortError'){
+        $pullStatusText.textContent = '已停止下载 ' + name;
+        $pullStatusText.style.color = 'var(--danger)';
+      }else{
+        $pullStatusText.textContent = '下载失败：' + (e.message || e);
+        $pullStatusText.style.color = 'var(--danger)';
+      }
+    }finally{
+      pullAbortController = null;
+      // 恢复下载按钮
+      var btns2 = $pullRecomList.querySelectorAll('button');
+      for(var n = 0; n < btns2.length; n++){ btns2[n].disabled = false; }
+      $btnPullCustom.disabled = false;
+      $btnPullStop.disabled = true;
+      // 刷新已下载列表（无论成功失败）
+      loadLocalModels();
+      // Task 5.6: 刷新 PROVIDER_MODELS.ollama + 重新渲染 modelSel
+      refreshOllamaModels();
+    }
+  }
+  // 处理 pull SSE 事件
+  function handlePullEvent(jsonStr, name){
+    var ev;
+    try{ ev = JSON.parse(jsonStr); }catch(e){ return; }
+    var t = ev.type || '';
+    if(t === 'PullProgress'){
+      var pct = ev.percent || 0;
+      $pullProgressFill.style.width = pct + '%';
+      $pullStatusText.style.color = 'var(--accent-2)';
+      $pullStatusText.textContent = '下载 ' + name + ' · ' + pct + '% · ' + (ev.status || '') + (ev.total ? ' ('+formatBytes(ev.completed)+'/'+formatBytes(ev.total)+')' : '');
+    }else if(t === 'PullDone'){
+      $pullProgressFill.style.width = '100%';
+      $pullStatusText.style.color = 'var(--accent)';
+      $pullStatusText.textContent = '✓ ' + name + ' 下载完成';
+    }else if(t === 'PullError'){
+      $pullStatusText.style.color = 'var(--danger)';
+      $pullStatusText.textContent = '下载失败：' + (ev.msg || ev.error || '未知错误');
+    }
+  }
+  function formatBytes(b){
+    if(!b) return '0B';
+    if(b < 1024) return b + 'B';
+    if(b < 1024*1024) return (b/1024).toFixed(1) + 'KB';
+    if(b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + 'MB';
+    return (b/1024/1024/1024).toFixed(2) + 'GB';
+  }
+  // Task 5.6: 拉取已下载模型列表，刷新 PROVIDER_MODELS.ollama + modelSel 下拉框
+  async function refreshOllamaModels(){
+    try{
+      var res = await fetch(state.baseURL + '/ollama/tags', {method:'GET'});
+      if(!res.ok) return;
+      var data = await res.json();
+      var models = (data && data.models) || [];
+      var list = [];
+      for(var i = 0; i < models.length; i++){
+        var m = models[i];
+        var nm = m.name || m.model || '';
+        if(!nm) continue;
+        var sizeStr = m.size ? ' ' + (m.size/1024/1024/1024).toFixed(1)+'GB' : '';
+        list.push({value: nm, label: nm + sizeStr});
+      }
+      if(list.length > 0){
+        // 标记当前选中的模型
+        var foundCurrent = false;
+        for(var j = 0; j < list.length; j++){
+          if(list[j].value === state.model){
+            list[j].selected = true;
+            foundCurrent = true;
+          }
+        }
+        if(!foundCurrent){
+          list[0].selected = true;
+          state.model = list[0].value;
+          localStorage.setItem('aitxt.model', state.model);
+        }
+        PROVIDER_MODELS.ollama = list;
+        // 持久化到 localStorage，刷新不丢失
+        try{
+          localStorage.setItem("aitxt.ollamaModels", JSON.stringify(PROVIDER_MODELS));
+        }catch(e){}
+        // 若当前 provider 是 ollama，重新渲染下拉框
+        if(state.provider === 'ollama'){
+          refreshModelOptions();
+        }
+      }
+    }catch(e){ /* 忽略刷新失败 */ }
+  }
+  // Task 5.5: 绑定事件
+  $btnOpenPullDialog.addEventListener("click", function(){
+    openPullDialog();
+  });
+  $btnClosePullDialog.addEventListener("click", function(){
+    closePullDialog();
+  });
+  $btnPullCustom.addEventListener("click", function(){
+    var name = $pullCustomName.value.trim();
+    if(name) pullModel(name);
+  });
+  $pullCustomName.addEventListener("keydown", function(e){
+    if(e.key === 'Enter'){
+      var name = $pullCustomName.value.trim();
+      if(name) pullModel(name);
+    }
+  });
+  $btnPullStop.addEventListener("click", function(){
+    if(pullAbortController){
+      pullAbortController.abort();
+      pullAbortController = null;
+    }
+  });
+  // 点击 overlay 外部关闭对话框
+  $pullDialog.addEventListener("click", function(e){
+    if(e.target === $pullDialog) closePullDialog();
+  });
 
   // ===== messages =====
   function showMsg(t,info){ $formMsg.textContent=t; $formMsg.className="form-msg show"+(info?" info":""); }
@@ -736,19 +1836,29 @@
       if(!res.ok) throw new Error("HTTP "+res.status);
       var data=await res.json();
       state.healthy = !!data.ollama;
-      if(data.model){ state.model=data.model; $modelLabel.textContent=data.model; }
+      state.deepseekReady = !!data.deepseek;
+      if(data.model){ $modelLabel.textContent=data.model; }
       renderStatus();
+      // 后端可达，顺便加载默认提示词
+      initPromptPanel();
     }catch(e){
       state.healthy=false;
+      state.deepseekReady=false;
       renderStatus();
     }
   }
   function renderStatus(){
-    if(state.healthy){
+    var ollamaOn=state.healthy;
+    var deepseekOn=state.deepseekReady;
+    var anyOn = ollamaOn || deepseekOn;
+    if(anyOn){
       $statusDot.classList.remove("off");
       $statusText.textContent="SIGNAL RELAY · 在线";
       $hintLine.classList.remove("show");
-      $svcHint.textContent="✓ 服务在线";
+      var bits=[];
+      if(ollamaOn) bits.push("Ollama");
+      if(deepseekOn) bits.push("DeepSeek");
+      $svcHint.textContent="✓ 在线："+bits.join(" + ");
       $svcHint.style.color="var(--accent)";
     }else{
       $statusDot.classList.add("off");
@@ -846,12 +1956,13 @@
 
   // ===== chunk =====
   var BREAK=/[\s，。！？；,\.!?;、：:]/;
-  function chunk(text,limit){
-    var out=[]; var i=0;
+  function chunk(text,limit,firstLimit){
+    var out=[]; var i=0; var idx=0;
     while(i<text.length){
-      var end=Math.min(i+limit,text.length);
+      var curLimit = (idx===0 && firstLimit>0) ? firstLimit : limit;
+      var end=Math.min(i+curLimit,text.length);
       if(end<text.length){
-        var searchStart=i+Math.floor(limit*0.85);
+        var searchStart=i+Math.floor(curLimit*0.85);
         if(searchStart<i) searchStart=i;
         var breakAt=-1;
         for(var j=end-1;j>=searchStart;j--){
@@ -861,7 +1972,7 @@
       }
       var piece=text.slice(i,end).trim();
       if(piece) out.push(piece);
-      i=end;
+      i=end; idx++;
     }
     return out;
   }
@@ -869,7 +1980,28 @@
   // ===== deep compress via API =====
   async function deepCompress(text){
     var ratio=currentRatio();
-    var body={ text:text, ratio:ratio, no_model: !state.useModel, model: state.model };
+    var body={
+      text:text, ratio:ratio,
+      no_model: !state.useModel,
+      provider: state.provider,
+      model: state.model
+    };
+    // DeepSeek / custom 时带 API key 和 base_url
+    if(state.provider === 'deepseek' || state.provider === 'custom'){
+      if(state.apiKey) body.api_key = state.apiKey;
+      if(state.provider === 'custom' && state.baseUrl) body.base_url = state.baseUrl;
+    }
+    // 推理强度：none 时不传
+    if(state.reasoningEffort && state.reasoningEffort !== 'none'){
+      body.reasoning_effort = state.reasoningEffort;
+    }
+    // 自定义提示词（空字符串不传，由后端用默认）
+    if(state.customSystem && state.customSystem.trim()){
+      body.custom_system = state.customSystem;
+    }
+    if(state.customUserTemplate && state.customUserTemplate.trim()){
+      body.custom_user_template = state.customUserTemplate;
+    }
     var res=await fetch(state.baseURL+"/compress",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -880,6 +2012,258 @@
       throw new Error(errText);
     }
     return await res.json();
+  }
+
+  // ===== Task 7: SSE 流式调用 /compress_stream =====
+  async function deepCompressStream(text, onEvent, opts, signal){
+    opts = opts || {};
+    // 模型模式时算法阶段固定 0.66，否则用用户选择的比例
+    var ratio = state.useModel ? 0.66 : currentRatio();
+    var body = {
+      text: text,
+      ratio: ratio,
+      no_model: !state.useModel,
+      provider: state.provider,
+      model: state.model
+    };
+    // Task 3: 字数模式时传 target_chars
+    if(state.useModel && state.targetMode === 'chars' && state.targetChars && parseInt(state.targetChars) > 0){
+      body.target_chars = parseInt(state.targetChars);
+      body.ratio = 0.66;  // 算法阶段比例（fallback）
+    } else {
+      body.ratio = opts.ratio || ratio;
+    }
+    if(state.provider === 'deepseek' || state.provider === 'custom'){
+      if(state.apiKey) body.api_key = state.apiKey;
+      if(state.provider === 'custom' && state.baseUrl) body.base_url = state.baseUrl;
+    }
+    if(state.reasoningEffort && state.reasoningEffort !== 'none'){
+      body.reasoning_effort = state.reasoningEffort;
+    }
+    if(state.customSystem && state.customSystem.trim()){
+      body.custom_system = state.customSystem;
+    }
+    if(state.customUserTemplate && state.customUserTemplate.trim()){
+      body.custom_user_template = state.customUserTemplate;
+    }
+    // 重试时传 preset 和 text_algo（让后端跳过算法阶段）
+    if(opts.preset) body.preset = opts.preset;
+    if(opts.text_algo) body.text_algo = opts.text_algo;
+    if(opts.target_chars_override) body.target_chars_override = opts.target_chars_override;
+
+    var fetchOpts = {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body)
+    };
+    if(signal) fetchOpts.signal = signal;
+    var res = await fetch(state.baseURL + "/compress_stream", fetchOpts);
+    if(!res.ok){
+      var errText2 = await res.text().catch(function(){ return "HTTP " + res.status; });
+      throw new Error(errText2);
+    }
+    if(!res.body){
+      throw new Error("ReadableStream not supported");
+    }
+    var reader = res.body.getReader();
+    var decoder = new TextDecoder("utf-8");
+    var buffer = "";
+    var lastDone = null;
+    var streamError = null;
+
+    function processEvent(jsonStr){
+      try{
+        var event = JSON.parse(jsonStr);
+        if(event.type === "Done"){ lastDone = event; }
+        else if(event.type === "Error"){ streamError = event.msg || "未知错误"; }
+        if(onEvent) onEvent(event);
+      }catch(e){ /* 忽略解析错误 */ }
+    }
+
+    while(true){
+      var chunk = await reader.read();
+      if(chunk.done) break;
+      buffer += decoder.decode(chunk.value, {stream: true});
+      // 按 \n\n 分割 SSE 事件
+      var parts = buffer.split("\n\n");
+      buffer = parts.pop() || "";
+      for(var i = 0; i < parts.length; i++){
+        var lines = parts[i].split("\n");
+        for(var j = 0; j < lines.length; j++){
+          if(lines[j].indexOf("data: ") === 0){
+            processEvent(lines[j].slice(6));
+          }
+        }
+      }
+    }
+    // 处理剩余 buffer
+    if(buffer.trim()){
+      var lines2 = buffer.split("\n");
+      for(var k = 0; k < lines2.length; k++){
+        if(lines2[k].indexOf("data: ") === 0){
+          processEvent(lines2[k].slice(6));
+        }
+      }
+    }
+    return {result: lastDone, error: streamError};
+  }
+
+  // Task 7: SSE 事件处理（更新进度条 / 日志 / 结果文本）
+  function handleStreamEvent(event){
+    var t = event.t || 0;
+    switch(event.type){
+      case "Init":
+        state.lastTarget = event.target_chars || 0;
+        appendLogEntry({t:t, level:'info', stage:'init',
+          msg:'开始压缩：原文 ' + (event.original_chars||0) + ' 字，目标比例 ' + Math.round((event.ratio||0)*100) + '%，provider=' + (event.provider||'') + ', model=' + (event.model||'')});
+        setStep(1);
+        break;
+      case "AlgoStart":
+        appendLogEntry({t:t, level:'info', stage:'algo', msg:'算法开始'});
+        setStep(2);
+        $btnSplit.innerHTML='<span class="spinner"></span>算法压缩…';
+        break;
+      case "AlgoDone":
+        appendLogEntry({t:t, level:'info', stage:'algo',
+          msg:'算法完成：' + (event.original||0) + ' → rules ' + (event.after_rules||0) + ' → sent ' + (event.after_sentence_compress||0) + ' → textrank ' + (event.after_textrank||0) + ' 字（耗时 ' + (event.elapsed_ms||0) + 'ms）'});
+        // 保存算法输出用于重试（若后端返回 algo_text 字段）
+        if(event.algo_text) state.lastAlgoText = event.algo_text;
+        break;
+      case "ModelStart":
+        appendLogEntry({t:t, level:'info', stage:'model',
+          msg:'调用模型：provider=' + (event.provider||'') + ', model=' + (event.model||'') + ', reasoning=' + (event.reasoning_effort||'none') + ', 输入 ' + (event.input_chars||0) + ' 字'});
+        setStep(3);
+        $btnSplit.innerHTML='<span class="spinner"></span>模型压缩…';
+        $resultText.textContent = '';
+        $compressResult.classList.add("show");
+        // 保存模型调用上下文
+        state.streamContext = {
+          system_prompt: event.system_prompt,
+          user_prompt: event.user_prompt,
+          provider: event.provider,
+          model: event.model,
+          reasoning_effort: event.reasoning_effort,
+          input_chars: event.input_chars
+        };
+        startModelTimer();
+        break;
+      case "ModelDelta":
+        $resultText.textContent += (event.delta || '');
+        // 更新顶部"模型输出中 · 已 N 字 · Mms"计数
+        var curChars = $resultText.textContent.length;
+        var curMs = modelStartTime ? (Date.now() - modelStartTime) : 0;
+        $logSummary.innerHTML = '模型输出中 · 已 <b>' + curChars + '</b> 字 · <b>' + curMs + '</b>ms';
+        $logSummary.classList.remove("warn","err");
+        break;
+      case "ModelDone":
+        var inChars = (state.streamContext && state.streamContext.input_chars) || 0;
+        var outChars = event.output_chars || 0;
+        var reduction = inChars > 0 ? ((1 - outChars/inChars) * 100).toFixed(1) : 0;
+        appendLogEntry({t:t, level:'info', stage:'model',
+          msg:'模型完成：' + inChars + ' → ' + outChars + ' 字（耗时 ' + (event.elapsed_ms||0) + 'ms，缩短 ' + reduction + '%，prompt_tokens=' + (event.prompt_tokens||0) + ', completion_tokens=' + (event.completion_tokens||0) + '）'});
+        stopModelTimer();
+        break;
+      case "Fallback":
+        var fbReason = event.reason || event.msg || '';
+        appendLogEntry({t:t, level:'warn', stage:'fallback', msg:'回退：' + fbReason});
+        // 同步到 state.lastLog，供后续 renderRunLog 正确显示回退原因
+        if(state.lastLog){
+          state.lastLog.fallback_triggered = true;
+          state.lastLog.fallback_reason = fbReason;
+        } else {
+          state.lastLog = {entries:[], fallback_triggered:true, fallback_reason:fbReason};
+        }
+        break;
+      case "Done":
+        // Task 9: 字数不达标检测
+        if(state.lastTarget > 0){
+          var target = state.lastTarget;
+          var fc = event.final_chars || 0;
+          if(fc > target * 1.1 || fc < target * 0.9){
+            var deviation = target > 0 ? Math.round(Math.abs((fc - target) / target) * 100) : 0;
+            $resultWarnMsg.textContent = '输出 ' + fc + ' 字（目标 ' + target + ' 字，偏差 ±' + deviation + '%）';
+            $resultWarn.classList.add("show");
+          }else{
+            $resultWarn.classList.remove("show");
+          }
+        }else{
+          $resultWarn.classList.remove("show");
+        }
+        // 完整结果渲染交给主流程的 renderCompressResult
+        break;
+      case "Error":
+        var errMsg = event.msg || event.error || '未知错误';
+        appendLogEntry({t:t, level:'error', stage:'error', msg:'[ERROR] ' + errMsg});
+        // 额外把错误详情写入 state.lastLog，供 renderRunLog 在 model_call=null 时显示
+        if(state.lastLog){
+          state.lastLog.error = errMsg;
+          if(!state.lastLog.entries) state.lastLog.entries=[];
+        } else {
+          state.lastLog = {entries:[], error:errMsg};
+        }
+        showMsg("处理失败：" + errMsg);
+        break;
+    }
+  }
+
+  // Task 7: 从 SSE 事件流重建 compressData（供 renderCompressResult 使用）
+  function reconstructCompressData(doneEvent, events){
+    var initEvent=null, algoDoneEvent=null, modelStartEvent=null, modelDoneEvent=null, fallbackEvent=null;
+    for(var i=0;i<events.length;i++){
+      var e=events[i];
+      if(e.type==="Init") initEvent=e;
+      else if(e.type==="AlgoDone") algoDoneEvent=e;
+      else if(e.type==="ModelStart") modelStartEvent=e;
+      else if(e.type==="ModelDone") modelDoneEvent=e;
+      else if(e.type==="Fallback") fallbackEvent=e;
+    }
+    var orig = initEvent ? (initEvent.original_chars||0) : 0;
+    var algoChars = algoDoneEvent ? (algoDoneEvent.after_textrank || algoDoneEvent.after_sentence_compress || orig) : orig;
+    var modelChars = modelDoneEvent ? (modelDoneEvent.output_chars||0) : (doneEvent.final_chars||0);
+    var finalChars = doneEvent.final_chars || 0;
+    var finalText = doneEvent.final_text || "";
+
+    // 构建 log 对象（供 renderRunLog 渲染各视图）
+    var log = {
+      entries: (state.lastLog && state.lastLog.entries) || [],
+      total_ms: doneEvent.total_ms || 0,
+      original_chars: orig,
+      final_chars: finalChars,
+      no_model: initEvent ? !!initEvent.no_model : false,
+      model: initEvent ? (initEvent.model||"") : "",
+      provider: initEvent ? (initEvent.provider||"") : "",
+      model_call: (modelStartEvent && modelDoneEvent) ? {
+        success: modelDoneEvent.success !== false,
+        provider: initEvent ? (initEvent.provider||"") : "",
+        model: initEvent ? (initEvent.model||"") : "",
+        endpoint: "",
+        reasoning_effort: modelStartEvent.reasoning_effort || null,
+        system_prompt: modelStartEvent.system_prompt || "",
+        user_prompt: modelStartEvent.user_prompt || "",
+        input_chars: modelStartEvent.input_chars || 0,
+        output_chars: modelDoneEvent.output_chars || 0,
+        elapsed_ms: modelDoneEvent.elapsed_ms || 0,
+        prompt_tokens: modelDoneEvent.prompt_tokens || 0,
+        completion_tokens: modelDoneEvent.completion_tokens || 0,
+        reasoning_tokens: modelDoneEvent.reasoning_tokens || 0,
+        error: modelDoneEvent.error || null,
+        raw_response: null
+      } : null,
+      fallback_triggered: !!fallbackEvent,
+      fallback_reason: fallbackEvent ? (fallbackEvent.reason || fallbackEvent.msg || "") : null
+    };
+
+    return {
+      original: orig,
+      compressed: finalChars,
+      text: finalText,
+      text_algo: algoDoneEvent ? (algoDoneEvent.algo_text || "") : "",
+      stages: {
+        after_algo: algoChars,
+        after_model: modelChars
+      },
+      log: log
+    };
   }
 
   // ===== render compress result =====
@@ -900,6 +2284,15 @@
     $barAlgo.style.width="0%";
     $barModel.style.width="0%";
 
+    // 重置 Diff 视图（新结果渲染时强制回到普通视图，保留四段文本）
+    if(state.diffOn) toggleDiff(false);
+    state.diffPair="raw-model";
+    var initTabs=$diffTabs.querySelectorAll(".diff-tab:not(.diff-tab-exit)");
+    for(var ti=0;ti<initTabs.length;ti++){
+      if(initTabs[ti].getAttribute("data-pair")==="raw-model") initTabs[ti].classList.add("active");
+      else initTabs[ti].classList.remove("active");
+    }
+
     // 显示面板
     $compressResult.classList.add("show");
 
@@ -919,6 +2312,390 @@
     $resultBadge.textContent="RATIO "+ratioPct.toFixed(0)+"%";
 
     $outStat.innerHTML='原始 <b>'+orig.toLocaleString()+'</b> 字 <span class="sep">→</span> 压缩 <b>'+finalLen.toLocaleString()+'</b> 字 <span class="sep">·</span> 压缩比 <b>'+ratioPct.toFixed(1)+'%</b>';
+
+    // 算法/模型切换按钮：仅在 modelText 与 algoText 不同时显示
+    if($resultViewTabs){
+      var hasDiff = state.modelText && state.algoText && state.modelText !== state.algoText;
+      $resultViewTabs.style.display = hasDiff ? "flex" : "none";
+    }
+    // 根据 state.resultView 决定显示哪段
+    setResultView(state.resultView);
+
+    // 渲染运行日志
+    if(data.log){
+      renderRunLog(data.log);
+    }else{
+      clearRunLog();
+    }
+  }
+
+  // ===== Change 3: 算法/模型结果切换 =====
+  function setResultView(view){
+    state.resultView = view;
+    localStorage.setItem("aitxt.resultView", view);
+    // 更新按钮 active 状态
+    if($btnViewAlgo) $btnViewAlgo.classList.toggle("active", view === "algo");
+    if($btnViewModel) $btnViewModel.classList.toggle("active", view === "model");
+    // 更新 #resultText 显示
+    var text = (view === "algo") ? (state.algoText || "") : (state.modelText || state.algoText || "");
+    if($resultText) $resultText.textContent = text;
+    // 更新 #resultCnt 字数
+    if($resultCnt) $resultCnt.textContent = text.length + " 字";
+    // 如果 Diff 视图打开，刷新 Diff
+    if($diffView && $diffView.style.display !== "none" && state.diffPair){
+      renderDiff(state.diffPair);
+    }
+  }
+
+  // ===== 运行日志渲染 =====
+  function clearRunLog(){
+    state.lastLog=null;
+    $logBadge.textContent="— —";
+    $logBadge.style.color="var(--muted)";
+    $logSummary.textContent="尚未运行";
+    $logSummary.classList.remove("warn","err");
+    $logViewEntries.innerHTML='<div class="log-empty">运行后这里会显示每一步的日志（清洗 / 算法 / 模型 / 完成）</div>';
+    $logViewPrompt.innerHTML='<div class="log-empty">未调用模型</div>';
+    $logViewModel.innerHTML='<div class="log-empty">未调用模型</div>';
+    $logViewRaw.innerHTML='<div class="log-empty">未运行</div>';
+  }
+
+  // Task 6: 实时追加单条日志条目（流式 SSE 期间使用）
+  function appendLogEntry(entry){
+    if(!entry) return;
+    var level=entry.level||"info";
+    var t=entry.t||0;
+    var msg=entry.msg||"";
+    // 清除空状态
+    var empty=$logViewEntries.querySelector(".log-empty");
+    if(empty){ $logViewEntries.innerHTML=""; }
+    var div=document.createElement("div");
+    div.className="log-entry "+esc(level);
+    div.innerHTML='<div class="t">+'+t+'ms</div><div class="m">'+esc(msg)+'</div>';
+    $logViewEntries.appendChild(div);
+    // 自动滚动到底部
+    $logViewEntries.scrollTop=$logViewEntries.scrollHeight;
+    // 同时更新 state.lastLog.entries（若 lastLog 存在）
+    if(state.lastLog){
+      if(!state.lastLog.entries) state.lastLog.entries=[];
+      state.lastLog.entries.push(entry);
+    } else {
+      // 流式开始时 lastLog 尚未渲染，先初始化一个最小结构
+      state.lastLog={entries:[entry]};
+    }
+  }
+
+  function esc(s){
+    if(s===null||s===undefined) return "";
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  function renderRunLog(log){
+    state.lastLog=log;
+    if(!log){ clearRunLog(); return; }
+
+    // 顶部摘要
+    var totalMs=log.total_ms||0;
+    var orig=log.original_chars||0;
+    var finalLen=log.final_chars||0;
+    var ratioPct=orig>0?(finalLen/orig*100):0;
+    var hasErr=log.entries && log.entries.some(function(e){return e.level==="error";});
+    var hasWarn=log.fallback_triggered || (log.entries && log.entries.some(function(e){return e.level==="warn";}));
+
+    $logBadge.textContent=totalMs+"ms · "+ratioPct.toFixed(1)+"%";
+    $logBadge.style.color=hasErr?"var(--danger)":(hasWarn?"var(--accent-2)":"var(--accent)");
+
+    var summaryParts=[
+      "耗时 <b>"+totalMs+"ms</b>",
+      "原文 <b>"+orig.toLocaleString()+"</b> 字",
+      "结果 <b>"+finalLen.toLocaleString()+"</b> 字",
+      "比例 <b>"+ratioPct.toFixed(1)+"%</b>"
+    ];
+    if(log.no_model){ summaryParts.push("<b>仅算法</b>（无模型）"); }
+    else if(log.model_call && log.model_call.success){
+      summaryParts.push("模型 <b>"+esc(log.model)+"</b> · tokens in=<b>"+log.model_call.prompt_tokens+"</b>/out=<b>"+log.model_call.completion_tokens+"</b>");
+    }else if(log.fallback_triggered){
+      summaryParts.push("<b>回退</b> "+esc(log.fallback_reason||""));
+    }
+    $logSummary.innerHTML=summaryParts.join(" · ");
+    $logSummary.classList.remove("warn","err");
+    if(hasErr) $logSummary.classList.add("err");
+    else if(hasWarn) $logSummary.classList.add("warn");
+
+    // 1. 日志条目视图
+    var entriesHtml="";
+    if(log.entries && log.entries.length){
+      for(var i=0;i<log.entries.length;i++){
+        var e=log.entries[i];
+        entriesHtml+='<div class="log-entry '+esc(e.level||"info")+'">'+
+          '<div class="t">+'+(e.t||0)+'ms</div>'+
+          '<div class="m">'+esc(e.msg||"")+'</div>'+
+        '</div>';
+      }
+    }else{
+      entriesHtml='<div class="log-empty">无日志条目</div>';
+    }
+    $logViewEntries.innerHTML=entriesHtml;
+
+    // 2. Prompt 视图
+    var promptHtml="";
+    var mc=log.model_call;
+    if(mc){
+      promptHtml+='<div class="log-section">'+
+        '<div class="log-section-title">System Prompt · 系统提示词'+
+          '<button type="button" class="copy-mini" data-copy-target="prompt-system-text">复制</button>'+
+        '</div>'+
+        '<div class="log-pre" id="prompt-system-text">'+esc(mc.system_prompt||"")+'</div>'+
+      '</div>';
+      promptHtml+='<div class="log-section">'+
+        '<div class="log-section-title">User Prompt · 用户消息（占位符已替换）'+
+          '<button type="button" class="copy-mini" data-copy-target="prompt-user-text">复制</button>'+
+        '</div>'+
+        '<div class="log-pre" id="prompt-user-text">'+esc(mc.user_prompt||"")+'</div>'+
+      '</div>';
+      promptHtml+='<div class="log-section">'+
+        '<div class="log-section-title">调用参数</div>'+
+        '<div class="log-kv">'+
+          kvRow("provider", mc.provider)+
+          kvRow("model", mc.model)+
+          kvRow("endpoint", mc.endpoint)+
+          kvRow("reasoning_effort", mc.reasoning_effort||"(none)")+
+          kvRow("输入字数", mc.input_chars+" 字")+
+          kvRow("输出字数", mc.output_chars+" 字")+
+          kvRow("耗时", mc.elapsed_ms+" ms")+
+          kvRow("状态", mc.success?"成功":"失败", mc.success?"ok":"fail")+
+        '</div>'+
+      '</div>';
+    }else if(log.no_model){
+      promptHtml='<div class="log-empty">本次为「仅算法」模式，未调用模型，无 Prompt</div>';
+    }else{
+      // model_call=null 且 no_model=false：模型调用失败或被跳过
+      promptHtml='<div class="log-empty" style="color:var(--danger)">模型调用失败或被跳过，请查看日志条目了解详情'+
+        (log.fallback_reason ? '<br><span style="color:var(--accent-2)">回退原因：'+esc(log.fallback_reason)+'</span>' : '')+
+        (log.error ? '<br><span style="color:var(--danger)">错误：'+esc(log.error)+'</span>' : '')+
+        '</div>';
+    }
+    $logViewPrompt.innerHTML=promptHtml;
+
+    // 3. 模型响应视图
+    var modelHtml="";
+    if(mc){
+      modelHtml+='<div class="log-section">'+
+        '<div class="log-section-title">Token 用量</div>'+
+        '<div class="log-kv">'+
+          kvRow("prompt_tokens (输入)", mc.prompt_tokens)+
+          kvRow("completion_tokens (输出)", mc.completion_tokens)+
+          kvRow("reasoning_tokens (推理)", mc.reasoning_tokens)+
+        '</div>'+
+      '</div>';
+      if(!mc.success){
+        modelHtml+='<div class="log-section">'+
+          '<div class="log-section-title">错误信息</div>'+
+          '<div class="log-pre" style="color:var(--danger)">'+esc(mc.error||"未知错误")+'</div>'+
+        '</div>';
+      }
+      if(log.fallback_triggered){
+        modelHtml+='<div class="log-section">'+
+          '<div class="log-section-title">回退原因</div>'+
+          '<div class="log-pre" style="color:var(--accent-2)">'+esc(log.fallback_reason||"")+'</div>'+
+        '</div>';
+      }
+    }else{
+      // model_call=null：根据 no_model 显示不同提示
+      if(log.no_model){
+        modelHtml='<div class="log-empty">本次为「仅算法」模式</div>';
+      }else{
+        modelHtml='<div class="log-empty" style="color:var(--danger)">模型调用失败或被跳过，请查看日志条目了解详情'+
+          (log.fallback_reason ? '<br><span style="color:var(--accent-2)">回退原因：'+esc(log.fallback_reason)+'</span>' : '')+
+          (log.error ? '<br><span style="color:var(--danger)">错误：'+esc(log.error)+'</span>' : '')+
+          '</div>';
+      }
+    }
+    $logViewModel.innerHTML=modelHtml;
+
+    // 4. 原始 JSON 视图
+    var rawHtml="";
+    if(mc && mc.raw_response){
+      rawHtml+='<div class="log-section">'+
+        '<div class="log-section-title">模型原始响应（截断 4000 字符）'+
+          '<button type="button" class="copy-mini" data-copy-target="raw-response-text">复制</button>'+
+        '</div>'+
+        '<div class="log-pre" id="raw-response-text">'+esc(mc.raw_response)+'</div>'+
+      '</div>';
+    }
+    rawHtml+='<div class="log-section">'+
+      '<div class="log-section-title">完整 RunLog JSON'+
+        '<button type="button" class="copy-mini" data-copy-target="raw-fulllog-text">复制</button>'+
+      '</div>'+
+      '<div class="log-pre" id="raw-fulllog-text">'+esc(JSON.stringify(log,null,2))+'</div>'+
+    '</div>';
+    $logViewRaw.innerHTML=rawHtml;
+
+    // 切到当前激活视图（防止跨视图残留）
+    applyLogView(state.logView);
+  }
+
+  function kvRow(k,v,cls){
+    return '<div class="k">'+esc(k)+'</div><div class="v'+(cls?' '+cls:'')+'">'+esc(v===null||v===undefined?"":v)+'</div>';
+  }
+
+  function applyLogView(view){
+    state.logView=view;
+    $logViewEntries.style.display=view==="entries"?"block":"none";
+    $logViewPrompt.style.display=view==="prompt"?"block":"none";
+    $logViewModel.style.display=view==="model"?"block":"none";
+    $logViewRaw.style.display=view==="raw"?"block":"none";
+    var btns=document.querySelectorAll(".log-toggle");
+    for(var i=0;i<btns.length;i++){
+      if(btns[i].getAttribute("data-logview")===view) btns[i].classList.add("active");
+      else btns[i].classList.remove("active");
+    }
+  }
+
+  // 日志视图切换
+  document.querySelectorAll(".log-toggle").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      applyLogView(btn.getAttribute("data-logview"));
+    });
+  });
+
+  // 日志区域复制按钮（事件委托）
+  document.addEventListener("click",function(e){
+    var t=e.target;
+    if(!t || !t.classList || !t.classList.contains("copy-mini")) return;
+    var targetId=t.getAttribute("data-copy-target");
+    if(!targetId) return;
+    var node=document.getElementById(targetId);
+    if(!node) return;
+    copyTextPlain(node.textContent||"");
+    var orig=t.textContent;
+    t.textContent="已复制 ✓";
+    setTimeout(function(){ t.textContent=orig; }, 1200);
+  });
+
+  // ===== Prompt 编辑面板逻辑 =====
+  function isPromptCustom(){
+    return !!(state.customSystem && state.customSystem.trim()) || !!(state.customUserTemplate && state.customUserTemplate.trim());
+  }
+  function updatePromptBadge(){
+    if(isPromptCustom()){
+      $promptBadge.textContent="CUSTOM";
+      $promptBadge.classList.remove("default");
+      $promptBadge.classList.add("custom");
+    }else{
+      $promptBadge.textContent="DEFAULT";
+      $promptBadge.classList.remove("custom");
+      $promptBadge.classList.add("default");
+    }
+  }
+  function syncPromptTextareas(){
+    // 显示当前生效的提示词（自定义优先，否则默认）
+    $promptSystem.value=state.customSystem || state.defaultSystem || "";
+    $promptUser.value=state.customUserTemplate || state.defaultUserTemplate || "";
+  }
+  async function loadDefaultPrompt(){
+    if(state.promptLoaded) return;
+    try{
+      var res=await fetch(state.baseURL+"/default-prompt",{method:"GET"});
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      var data=await res.json();
+      state.defaultSystem=data.system||"";
+      state.defaultUserTemplate=data.user_template||"";
+      state.promptLoaded=true;
+      // 若用户没填自定义，文本框显示默认
+      if(!state.customSystem) $promptSystem.value=state.defaultSystem;
+      if(!state.customUserTemplate) $promptUser.value=state.defaultUserTemplate;
+    }catch(e){
+      $promptSystem.placeholder="加载默认提示词失败（后端服务未启动？）";
+      $promptUser.placeholder="加载默认提示词失败（后端服务未启动？）";
+    }
+  }
+
+  $btnPromptSave.addEventListener("click",function(){
+    var s=$promptSystem.value.trim();
+    var u=$promptUser.value.trim();
+    // 若与默认完全相同，则视为不使用自定义
+    if(state.promptLoaded && s===state.defaultSystem && u===state.defaultUserTemplate){
+      state.customSystem="";
+      state.customUserTemplate="";
+      localStorage.removeItem("aitxt.customSystem");
+      localStorage.removeItem("aitxt.customUserTemplate");
+      $promptHint.textContent="与默认相同，已清除自定义（每次压缩用后端默认）。";
+    }else{
+      state.customSystem=s;
+      state.customUserTemplate=u;
+      localStorage.setItem("aitxt.customSystem",s);
+      localStorage.setItem("aitxt.customUserTemplate",u);
+      $promptHint.textContent="已保存到本机（localStorage），之后每次压缩都会自动带上。";
+    }
+    updatePromptBadge();
+  });
+  $btnPromptReset.addEventListener("click",function(){
+    if(!state.promptLoaded){
+      $promptHint.textContent="默认提示词尚未加载，请先确保后端服务运行。";
+      return;
+    }
+    $promptSystem.value=state.defaultSystem;
+    $promptUser.value=state.defaultUserTemplate;
+    state.customSystem="";
+    state.customUserTemplate="";
+    localStorage.removeItem("aitxt.customSystem");
+    localStorage.removeItem("aitxt.customUserTemplate");
+    updatePromptBadge();
+    $promptHint.textContent="已恢复为默认提示词（未保存，点击「保存到本机」生效）。";
+  });
+  $btnPromptClear.addEventListener("click",function(){
+    $promptSystem.value="";
+    $promptUser.value="";
+    state.customSystem="";
+    state.customUserTemplate="";
+    localStorage.removeItem("aitxt.customSystem");
+    localStorage.removeItem("aitxt.customUserTemplate");
+    updatePromptBadge();
+    $promptHint.textContent="已清空自定义，下次压缩将使用后端默认（保存按钮可重新设置）。";
+  });
+
+  // 文本框内容变化时，仅更新提示，不自动保存
+  $promptSystem.addEventListener("input",function(){
+    $promptHint.textContent="文本已修改，点击「保存到本机」后生效。";
+  });
+  $promptUser.addEventListener("input",function(){
+    $promptHint.textContent="文本已修改，点击「保存到本机」后生效。";
+  });
+
+  // 初始化提示词面板（健康检查通过后调用）
+  function initPromptPanel(){
+    if(!state.promptLoaded){
+      loadDefaultPrompt().then(function(){
+        updatePromptBadge();
+      });
+    }else{
+      syncPromptTextareas();
+      updatePromptBadge();
+    }
+  }
+
+  // 简易复制函数（与页面其他位置一致）— 命名为 copyTextPlain 避免与下方双参版本冲突
+  function copyTextPlain(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).catch(function(){ fallbackCopy(text); });
+    }else{
+      fallbackCopy(text);
+    }
+  }
+  function fallbackCopy(text){
+    try{
+      var ta=document.createElement("textarea");
+      ta.value=text;
+      ta.style.position="fixed";
+      ta.style.opacity="0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }catch(e){}
   }
 
   // ===== main: split / compress =====
@@ -928,12 +2705,43 @@
     if(state.custom){
       if(!state.size || state.size<50 || state.size>10000){ showMsg("自定义字数需在 50–10000 之间"); return; }
     }
+    if(state.firstChunkEnabled){
+      var fcs=parseInt($firstChunkSize.value,10);
+      if(!fcs || fcs<1 || fcs>10000){ showMsg(state.firstChunkMode==="occupied"?"已占字数需在 1–10000 之间":"首片字数需在 1–10000 之间"); return; }
+      if(state.firstChunkMode==="occupied" && fcs>=state.size){ showMsg("已占字数应 < 拆分上限（当前 "+state.size+"），否则首片无剩余"); return; }
+      if(state.firstChunkMode==="direct" && fcs>state.size){ showMsg("首片字数应 ≤ 拆分上限（当前 "+state.size+"）"); return; }
+    }
 
     // 如果启用深度压缩，先检查服务
     if($optDeep.checked){
+      // ollama 需要本地后端 + ollama 在线
+      // deepseek/custom 只需要后端在线（API key 从前端 localStorage 传）
       if(!state.healthy){
-        showMsg("深度压缩服务离线，请先启动 bash start.sh");
+        showMsg("深度压缩需后端服务，请在终端运行：bash start.sh（不勾「深度压缩」仅用「深度精简」则无需后端）");
         return;
+      }
+      // ollama 模式额外检查 ollama 健康
+      if(state.useModel && state.provider==="ollama" && !state.healthy){
+        showMsg("已选 Ollama 但服务离线。请运行：ollama serve（另一个终端）");
+        return;
+      }
+      // deepseek/custom 校验 API key 和 base_url
+      if(state.useModel && (state.provider==="deepseek" || state.provider==="custom")){
+        if(!state.apiKey){
+          showMsg("请先在下方填写 API Key（密码框，仅存本机浏览器）");
+          $apiKeyInput.focus();
+          return;
+        }
+        if(state.provider==="custom" && !state.baseUrl){
+          showMsg("自定义 provider 需填写 Base URL");
+          $customBaseUrl.focus();
+          return;
+        }
+        if(state.provider==="custom" && !state.model){
+          showMsg("自定义 provider 需填写模型名");
+          $customModel.focus();
+          return;
+        }
       }
     }
 
@@ -942,6 +2750,11 @@
     var origLabel=$btnSplit.innerHTML;
     $btnSplit.disabled=true;
     hideMsg();
+
+    // Task 6: 清空旧日志，写入"开始处理"，切到日志条目视图
+    clearRunLog();
+    appendLogEntry({t:0, level:'info', stage:'init', msg:'开始处理'});
+    applyLogView('entries');
 
     // 启用深度压缩时显示进度条
     if($optDeep.checked){
@@ -960,27 +2773,116 @@
 
       // 深度压缩
       if($optDeep.checked){
-        // 步骤2：算法压缩（后端管线内含算法+模型，这里逐步标记）
-        // 后端一次请求完成算法+模型，前端按时间分阶段显示
-        setStep(2);
-        $btnSplit.innerHTML='<span class="spinner"></span>算法压缩…';
-
-        // 如果启用模型，算法阶段短暂展示后进入模型阶段
         if(state.useModel){
-          // 给算法阶段一个最小展示时间（500ms），然后切到模型阶段
-          await new Promise(function(r){ setTimeout(r,500); });
-          setStep(3);
-          $btnSplit.innerHTML='<span class="spinner"></span>模型压缩…';
-          showMsg("正在调用本地模型压缩，可能需要 10–30 秒…", true);
-          startModelTimer();
+          // Task 7: SSE 流式调用（模型模式）
+          $btnSplit.innerHTML='<span class="spinner"></span>压缩中…';
+          showMsg("正在流式压缩，模型输出会实时显示…", true);
+          // Task 1b: 流式开始 → 显示停止按钮，隐藏拆分按钮
+          $btnSplit.style.display='none';
+          $btnStop.style.display='inline-block';
+          state.streamStartTime = Date.now();
+          var streamEvents=[];
+          var streamResult=null;
+          var streamAborted=false;
+          // Task 1b: 创建 AbortController 用于手动停止
+          state.currentAbortController = new AbortController();
+          try{
+            streamResult=await deepCompressStream(cleaned, function(event){
+              streamEvents.push(event);
+              handleStreamEvent(event);
+            }, {}, state.currentAbortController.signal);
+            state.currentAbortController = null;
+          }catch(streamErr){
+            state.currentAbortController = null;
+            // Task 1b: 流式结束（含异常）→ 恢复按钮
+            $btnSplit.style.display='inline-block';
+            $btnStop.style.display='none';
+            if(streamErr && streamErr.name === 'AbortError'){
+              // 用户手动停止
+              streamAborted = true;
+              var abortMsg = '用户手动停止，已收到 ' + (state.modelText || '').length + ' 字';
+              appendLogEntry({t: Date.now() - state.streamStartTime, level:'warn', stage:'model', msg:abortMsg});
+              stopModelTimer();
+              // 保留已收到的 modelText 作为结果
+              if(state.modelText && state.modelText.length > 0){
+                state.rawText = raw;
+                state.cleanedText = cleaned;
+                state.algoText = cleaned;
+                workText = state.modelText;
+                compressData = {
+                  text: state.modelText,
+                  original: raw.length,
+                  compressed: state.modelText.length,
+                  ratio: state.modelText.length / Math.max(1, raw.length),
+                  log: {entries: []}
+                };
+                hideMsg();
+                finishProgress();
+              }else{
+                // 未收到任何模型输出
+                showMsg("已停止（未收到模型输出）");
+                hideProgress();
+              }
+            }else{
+              // 其他错误，走原回退逻辑
+              var streamFailMsg = '流式失败，回退到同步接口：'+(streamErr&&streamErr.message||streamErr||'未知错误');
+              appendLogEntry({t:0, level:'warn', stage:'fallback', msg:streamFailMsg});
+              // 同步到 state.lastLog，确保后续 renderRunLog 能显示回退原因
+              if(state.lastLog){
+                state.lastLog.fallback_triggered = true;
+                state.lastLog.fallback_reason = streamFailMsg;
+              } else {
+                state.lastLog = {entries:[], fallback_triggered:true, fallback_reason:streamFailMsg};
+              }
+              stopModelTimer();
+              streamResult=null;
+            }
+          }
+          if(!streamAborted){
+            if(streamResult && streamResult.result){
+              // 流式成功 → 重建 compressData
+              compressData=reconstructCompressData(streamResult.result, streamEvents);
+              workText=compressData.text||cleaned;
+              state.rawText=raw;
+              state.cleanedText=cleaned;
+              state.algoText=compressData.text_algo||compressData.text||cleaned;
+              state.modelText=workText;
+              hideMsg();
+              finishProgress();
+            }else if(streamResult && streamResult.error){
+              throw new Error(streamResult.error);
+            }else{
+              // 回退到同步接口
+              setStep(2);
+              $btnSplit.innerHTML='<span class="spinner"></span>算法压缩…';
+              showMsg("回退到同步压缩…", true);
+              compressData=await deepCompress(cleaned);
+              workText=compressData.text||cleaned;
+              state.rawText=raw;
+              state.cleanedText=cleaned;
+              state.algoText=compressData.text_algo||compressData.text||cleaned;
+              state.modelText=workText;
+              hideMsg();
+              finishProgress();
+            }
+          }
+          // Task 1b: 流式结束 → 恢复按钮
+          $btnSplit.style.display='inline-block';
+          $btnStop.style.display='none';
         }else{
+          // 仅算法模式：保持原同步接口
+          setStep(2);
+          $btnSplit.innerHTML='<span class="spinner"></span>算法压缩…';
           showMsg("正在算法压缩…", true);
+          compressData=await deepCompress(cleaned);
+          workText=compressData.text||cleaned;
+          state.rawText=raw;
+          state.cleanedText=cleaned;
+          state.algoText=compressData.text_algo||compressData.text||cleaned;
+          state.modelText=workText;
+          hideMsg();
+          finishProgress();
         }
-
-        compressData=await deepCompress(cleaned);
-        workText=compressData.text||cleaned;
-        hideMsg();
-        finishProgress();
       }
 
       // 拆分
@@ -992,6 +2894,8 @@
           $btnCopyAll.style.display="none";
           renderCompressResult(compressData);
           state.lastChunks=[workText];
+          // 滚动定位到压缩结果面板
+          scrollToCompressResult();
         }else{
           // 仅精简不拆分 → 单张卡片
           $compressResult.classList.remove("show");
@@ -1001,15 +2905,19 @@
       }else{
         // 拆分
         $compressResult.classList.remove("show");
-        var pieces=chunk(workText,state.size);
+        var firstLimit = computeFirstLimit();
+        var pieces=chunk(workText,state.size,firstLimit);
         state.lastChunks=pieces;
-        render(pieces,state.size);
+        render(pieces,state.size,firstLimit);
         if(compressData){
           // 压缩+拆分：在统计里附加压缩信息
           var origLen=compressData.original||0;
           var compLen=compressData.compressed||0;
-          $outStat.innerHTML='深度压缩 <b>'+origLen.toLocaleString()+'</b>→<b>'+compLen.toLocaleString()+'</b> 字 <span class="sep">·</span> 拆分 <b>'+pieces.length+'</b> 张 <span class="sep">·</span> 上限 <b>'+state.size+'</b>';
+          var limitDesc = firstLimit>0 ? ('首片 <b>'+firstLimit+'</b> / 后续 <b>'+state.size+'</b>') : ('上限 <b>'+state.size+'</b>');
+          $outStat.innerHTML='深度压缩 <b>'+origLen.toLocaleString()+'</b>→<b>'+compLen.toLocaleString()+'</b> 字 <span class="sep">·</span> 拆分 <b>'+pieces.length+'</b> 张 <span class="sep">·</span> '+limitDesc;
         }
+        // 滚动定位到第一张卡片
+        scrollToFirstCard();
       }
     }catch(e){
       showMsg("处理失败："+(e.message||e));
@@ -1019,33 +2927,86 @@
       state.processing=false;
       $btnSplit.disabled=false;
       $btnSplit.innerHTML=origLabel;
+      // Task 1b: 安全兜底，确保停止按钮隐藏、拆分按钮显示
+      $btnSplit.style.display='inline-block';
+      $btnStop.style.display='none';
+      state.currentAbortController=null;
     }
   });
 
+  // ===== Task 1b: 手动停止按钮 =====
+  $btnStop.addEventListener("click", function(){
+    if(state.currentAbortController){
+      state.currentAbortController.abort();
+      state.currentAbortController = null;
+    }
+  });
+
+  // ===== scroll to first card / compress result =====
+  function scrollToFirstCard(){
+    setTimeout(function(){
+      var card = $grid.querySelector(".card");
+      if(card){
+        card.scrollIntoView({behavior:"smooth", block:"start"});
+      } else {
+        // 兜底：滚动到 grid 容器
+        $grid.scrollIntoView({behavior:"smooth", block:"start"});
+      }
+    }, 100);
+  }
+  function scrollToCompressResult(){
+    setTimeout(function(){
+      $compressResult.scrollIntoView({behavior:"smooth", block:"start"});
+    }, 100);
+  }
+
   // ===== render cards =====
   function hex2(n){ var s=n.toString(16).toUpperCase(); return s.length<2?"0"+s:s; }
-  function render(pieces,limit){
+  function setAllCardsExpanded(expanded){
+    var cards=$grid.querySelectorAll(".card");
+    cards.forEach(function(card){
+      if(expanded){
+        card.classList.add("expanded");
+      }else{
+        card.classList.remove("expanded");
+      }
+      var btn=card.querySelector(".expand-btn");
+      if(btn){
+        var lbl=btn.querySelector(".lbl");
+        var ic=btn.querySelector(".ic");
+        if(lbl) lbl.textContent = expanded ? "收起" : "展开";
+        if(ic) ic.textContent = expanded ? "▴" : "▾";
+      }
+    });
+  }
+  function render(pieces,limit,firstLimit){
     $grid.innerHTML="";
     $compressResult.classList.remove("show");
     if(pieces.length===0){
       $grid.innerHTML='<div class="empty-state"><span class="glyph">- - -</span>无内容</div>';
       $outStat.textContent="等待输入信号…";
       $btnCopyAll.style.display="none";
+      if($gridTools) $gridTools.style.display="none";
       return;
     }
     var total=pieces.length;
     var totalChars=pieces.reduce(function(a,p){return a+p.length},0);
     var maxLen=Math.max.apply(null,pieces.map(function(p){return p.length}));
+    var firstLen=pieces[0].length;
 
+    var limitDesc = (firstLimit>0 && firstLimit<limit)
+      ? "首片 <b>"+firstLen+"</b> / 后续上限 <b>"+limit+"</b>"
+      : "单片上限 <b>"+limit+"</b>";
     $outStat.innerHTML =
       "共 <b>"+total+"</b> 张卡片"+
       '<span class="sep">·</span>'+
       "总 <b>"+totalChars.toLocaleString()+"</b> 字"+
       '<span class="sep">·</span>'+
-      "单片上限 <b>"+limit+"</b>"+
+      limitDesc+
       '<span class="sep">·</span>'+
       "最长片 <b>"+maxLen+"</b> 字";
     $btnCopyAll.style.display = total>1 ? "" : "none";
+    if($gridTools) $gridTools.style.display = total > 1 ? "flex" : "none";
 
     var frag=document.createDocumentFragment();
     pieces.forEach(function(p,idx){
@@ -1112,10 +3073,357 @@
 
   // ===== copy compress result =====
   $btnCopyResult.addEventListener("click",function(){
-    var text=$resultText.textContent;
-    if(!text) return;
-    copyText(text,$btnCopyResult);
+    var textToCopy = (state.resultView === "algo") ? (state.algoText || "") : (state.modelText || state.algoText || "");
+    if(!textToCopy) return;
+    copyText(textToCopy,$btnCopyResult);
   });
+
+  // ===== Change 3: 算法/模型视图切换 =====
+  $btnViewAlgo.addEventListener("click", function(){ setResultView("algo"); });
+  $btnViewModel.addEventListener("click", function(){ setResultView("model"); });
+
+  // ===== Change 2: 抽屉式结果 Tab + 再拆分 + 合并 =====
+  function pushResultTab(title, pieces, source, limit, firstLimit){
+    var id = "tab_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+    var tab = {id: id, title: title, pieces: pieces, source: source, limit: limit||0, firstLimit: firstLimit||0};
+    state.resultStack.push(tab);
+    switchResultTab(id);
+    return id;
+  }
+
+  function switchResultTab(id){
+    state.activeResultTabId = id;
+    renderResultStack();
+  }
+
+  function closeResultTab(id){
+    state.resultStack = state.resultStack.filter(function(t){return t.id !== id;});
+    if(state.activeResultTabId === id){
+      state.activeResultTabId = state.resultStack.length > 0 ? state.resultStack[state.resultStack.length-1].id : null;
+    }
+    renderResultStack();
+  }
+
+  function renderResultStack(){
+    if(state.resultStack.length === 0){
+      $resultStack.style.display = "none";
+      return;
+    }
+    $resultStack.style.display = "block";
+    // 渲染 tabs
+    $stackTabs.innerHTML = "";
+    state.resultStack.forEach(function(tab){
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "stack-tab" + (tab.id === state.activeResultTabId ? " active" : "");
+      btn.innerHTML = '<span>' + esc(tab.title) + '</span><span class="stack-close" title="关闭">✕</span>';
+      btn.addEventListener("click", function(e){
+        if(e.target.classList.contains("stack-close")){
+          closeResultTab(tab.id);
+        }else{
+          switchResultTab(tab.id);
+        }
+      });
+      $stackTabs.appendChild(btn);
+    });
+    // 渲染激活 tab 的内容
+    $stackBody.innerHTML = "";
+    var active = state.resultStack.find(function(t){return t.id === state.activeResultTabId;});
+    if(active){
+      var frag = document.createDocumentFragment();
+      active.pieces.forEach(function(p, idx){
+        var card = document.createElement("div");
+        card.className = "card expanded";  // 默认展开（合并/再拆分结果直接显示）
+        var head = document.createElement("div");
+        head.className = "card-head";
+        head.innerHTML = '<span class="card-idx">0x' + hex2(idx+1) + ' <span class="total">/ 0x' + hex2(active.pieces.length) + '</span></span><span class="card-cnt">' + p.length + ' 字</span>';
+        var body = document.createElement("div");
+        body.className = "card-body";
+        body.textContent = p;
+        var foot = document.createElement("div");
+        foot.className = "card-foot";
+        var btn = document.createElement("button");
+        btn.className = "copy-btn"; btn.type = "button";
+        btn.innerHTML = '<span class="ic">⧉</span> 复制';
+        btn.addEventListener("click", function(){ copyText(p, btn); });
+        foot.appendChild(btn);
+        card.appendChild(head); card.appendChild(body); card.appendChild(foot);
+        frag.appendChild(card);
+      });
+      $stackBody.appendChild(frag);
+    }
+  }
+
+  function reSplitCurrent(){
+    // 获取当前结果文本
+    var text = state.modelText || state.algoText || state.cleanedText || "";
+    if(!text){ alert("无结果可拆分"); return; }
+    $resplitInput.style.display = "flex";
+    $resplitSize.value = (typeof state.size === "number" && state.size > 0) ? state.size : 500;
+    $resplitFirst.value = state.firstChunkSize || 0;
+  }
+
+  function doReSplit(){
+    var size = parseInt($resplitSize.value) || 500;
+    var firstLimit = parseInt($resplitFirst.value) || 0;
+    var text = state.modelText || state.algoText || state.cleanedText || "";
+    if(!text){ alert("无结果可拆分"); return; }
+    var pieces = chunk(text, size, firstLimit);
+    state.resplitCounter++;
+    pushResultTab("再拆分 " + state.resplitCounter, pieces, "resplit", size, firstLimit);
+    $resplitInput.style.display = "none";
+  }
+
+  function mergeCurrent(){
+    // 取当前激活 tab 的 pieces 拼接
+    var active = state.resultStack.find(function(t){return t.id === state.activeResultTabId;});
+    if(!active || !active.pieces || active.pieces.length === 0){
+      alert("当前无卡片可合并");
+      return;
+    }
+    var merged = active.pieces.join("\n\n");
+    state.mergeCounter++;
+    pushResultTab("合并 " + state.mergeCounter, [merged], "merge", 0, 0);
+  }
+
+  $btnReSplit.addEventListener("click", function(){ reSplitCurrent(); });
+  $btnReSplitConfirm.addEventListener("click", function(){ doReSplit(); });
+  $btnReSplitCancel.addEventListener("click", function(){ $resplitInput.style.display = "none"; });
+  $btnMerge.addEventListener("click", function(){ mergeCurrent(); });
+
+  // ===== Task 9: 换一套提示词重试 =====
+  $btnRetryPreset.addEventListener("click", async function(){
+    if(state.processing) return;
+    if(!state.lastAlgoText){
+      showMsg("无算法输出可重试，请先完整执行一次压缩");
+      return;
+    }
+    // 切换 preset：standard → strict_chars → minimal → standard（循环）
+    var presets = ['standard', 'strict_chars', 'minimal'];
+    var idx = presets.indexOf(state.currentPreset);
+    if(idx < 0) idx = 0;
+    idx = (idx + 1) % presets.length;
+    state.currentPreset = presets[idx];
+    var presetNum = idx + 1;
+
+    state.processing = true;
+    $btnRetryPreset.disabled = true;
+    $btnSplit.disabled = true;
+    var origLabel = $btnSplit.innerHTML;
+    $btnSplit.innerHTML = '<span class="spinner"></span>重试中…';
+    hideMsg();
+
+    // 清空旧日志，写入重试日志
+    clearRunLog();
+    appendLogEntry({t:0, level:'info', stage:'retry', msg:'重试 · 切换到提示词 ' + presetNum + '/3：' + state.currentPreset});
+    applyLogView('entries');
+
+    // 重置进度条
+    resetProgress();
+    showProgress();
+    setStep(1);
+
+    // 隐藏旧警告条
+    $resultWarn.classList.remove("show");
+
+    try{
+      var retryEvents = [];
+      var retryResult = await deepCompressStream(state.lastAlgoText, function(event){
+        retryEvents.push(event);
+        handleStreamEvent(event);
+      }, {preset: state.currentPreset, text_algo: state.lastAlgoText, target_chars_override: state.lastTarget});
+
+      if(retryResult && retryResult.result){
+        var retryData = reconstructCompressData(retryResult.result, retryEvents);
+        // 更新四段文本
+        state.modelText = retryData.text || state.lastAlgoText;
+        // 重新渲染结果
+        $grid.innerHTML = "";
+        $btnCopyAll.style.display = "none";
+        renderCompressResult(retryData);
+        state.lastChunks = [retryData.text || state.lastAlgoText];
+        hideMsg();
+        finishProgress();
+        scrollToCompressResult();
+      }else if(retryResult && retryResult.error){
+        showMsg("重试失败：" + retryResult.error);
+        hideProgress();
+      }else{
+        // 流式失败，回退到同步接口
+        appendLogEntry({t:0, level:'warn', stage:'fallback', msg:'流式重试失败，回退到同步接口'});
+        var syncData = await deepCompress(state.lastAlgoText);
+        $grid.innerHTML = "";
+        $btnCopyAll.style.display = "none";
+        renderCompressResult(syncData);
+        state.lastChunks = [syncData.text || state.lastAlgoText];
+        state.modelText = syncData.text || state.lastAlgoText;
+        hideMsg();
+        finishProgress();
+      }
+    }catch(e){
+      showMsg("重试失败：" + (e.message || e));
+      hideProgress();
+      stopModelTimer();
+    }finally{
+      state.processing = false;
+      $btnRetryPreset.disabled = false;
+      $btnSplit.disabled = false;
+      $btnSplit.innerHTML = origLabel;
+    }
+  });
+
+  // ===== Diff: 逐句 LCS 对比 + 句内字符级差异 =====
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  // 切句：保留结尾标点（中英文句末标点）
+  function splitSentDiff(text){
+    if(!text) return [];
+    var parts = text.match(/[^。！？；!?;…\r\n]+[。！？；!?;…]+|[^。！？；!?;…\r\n]+/g) || [];
+    var out=[];
+    for(var i=0;i<parts.length;i++){
+      var s=parts[i].replace(/^[\s\r\n]+|[\s\r\n]+$/g,"");
+      if(s.length>0) out.push(s);
+    }
+    return out;
+  }
+  // LCS diff：返回 ops [{type:'eq'|'del'|'add', text}]
+  function lcsDiff(a,b){
+    var n=a.length, m=b.length;
+    var dp=[];
+    for(var i=0;i<=n;i++) dp.push(new Array(m+1).fill(0));
+    for(var i=n-1;i>=0;i--){
+      for(var j=m-1;j>=0;j--){
+        if(a[i]===b[j]) dp[i][j]=dp[i+1][j+1]+1;
+        else dp[i][j]=dp[i+1][j]>=dp[i][j+1] ? dp[i+1][j] : dp[i][j+1];
+      }
+    }
+    var ops=[];
+    var i=0,j=0;
+    while(i<n && j<m){
+      if(a[i]===b[j]){ ops.push({type:'eq',text:a[i]}); i++; j++; }
+      else if(dp[i+1][j] >= dp[i][j+1]){ ops.push({type:'del',text:a[i]}); i++; }
+      else { ops.push({type:'add',text:b[j]}); j++; }
+    }
+    while(i<n){ ops.push({type:'del',text:a[i]}); i++; }
+    while(j<m){ ops.push({type:'add',text:b[j]}); j++; }
+    return ops;
+  }
+  // 字符级 diff：用于"改"句的细粒度高亮
+  function charDiff(a,b){
+    var ah=Array.from(a), bh=Array.from(b);
+    var n=ah.length, m=bh.length;
+    var dp=[];
+    for(var i=0;i<=n;i++) dp.push(new Array(m+1).fill(0));
+    for(var i=n-1;i>=0;i--){
+      for(var j=m-1;j>=0;j--){
+        if(ah[i]===bh[j]) dp[i][j]=dp[i+1][j+1]+1;
+        else dp[i][j]=dp[i+1][j]>=dp[i][j+1] ? dp[i+1][j] : dp[i][j+1];
+      }
+    }
+    var out=[];
+    var i=0,j=0;
+    while(i<n && j<m){
+      if(ah[i]===bh[j]){ out.push({type:'eq',ch:ah[i]}); i++; j++; }
+      else if(dp[i+1][j] >= dp[i][j+1]){ out.push({type:'del',ch:ah[i]}); i++; }
+      else { out.push({type:'add',ch:bh[j]}); j++; }
+    }
+    while(i<n){ out.push({type:'del',ch:ah[i]}); i++; }
+    while(j<m){ out.push({type:'add',ch:bh[j]}); j++; }
+    return out;
+  }
+  function renderDiff(pair){
+    var pairs={
+      "raw-clean":[state.rawText,state.cleanedText,"原文 → 精简"],
+      "raw-algo":[state.rawText,state.algoText,"原文 → 算法"],
+      "raw-model":[state.rawText,state.modelText,"原文 → 模型"],
+      "algo-model":[state.algoText,state.modelText,"算法 → 模型"]
+    };
+    var cfg=pairs[pair]||pairs["raw-model"];
+    var orig=cfg[0], comp=cfg[1], title=cfg[2];
+    if(!orig || !comp){
+      $diffView.innerHTML='<div class="diff-empty">无对比数据（请先执行深度压缩）</div>';
+      return;
+    }
+    var aSents=splitSentDiff(orig);
+    var bSents=splitSentDiff(comp);
+    var ops=lcsDiff(aSents,bSents);
+    var rows=[];
+    var eqCount=0, modCount=0, delOnly=0, addOnly=0;
+    for(var k=0;k<ops.length;k++){
+      var op=ops[k];
+      if(op.type==='eq'){
+        rows.push('<div class="diff-row"><span class="diff-tag"> </span><span class="diff-text" style="color:var(--muted)">'+escapeHtml(op.text)+'</span></div>');
+        eqCount++;
+      }else if(op.type==='del'){
+        var nextOp=ops[k+1];
+        if(nextOp && nextOp.type==='add'){
+          // 句对配对 → 句内字符级 diff
+          var cd=charDiff(op.text,nextOp.text);
+          var segHtml='';
+          for(var c=0;c<cd.length;c++){
+            if(cd[c].type==='eq') segHtml+=escapeHtml(cd[c].ch);
+            else if(cd[c].type==='del') segHtml+='<del>'+escapeHtml(cd[c].ch)+'</del>';
+            else segHtml+='<ins>'+escapeHtml(cd[c].ch)+'</ins>';
+          }
+          rows.push('<div class="diff-row mod"><span class="diff-tag">~</span><span class="diff-text">'+segHtml+'</span></div>');
+          k++;
+          modCount++;
+        }else{
+          rows.push('<div class="diff-row del"><span class="diff-tag">-</span><span class="diff-text">'+escapeHtml(op.text)+'</span></div>');
+          delOnly++;
+        }
+      }else if(op.type==='add'){
+        rows.push('<div class="diff-row add"><span class="diff-tag">+</span><span class="diff-text">'+escapeHtml(op.text)+'</span></div>');
+        addOnly++;
+      }
+    }
+    var aLen=orig.length, bLen=comp.length;
+    var header='<div class="diff-head">'+
+      '<span class="diff-tag"> </span>'+
+      '<span class="diff-title">'+escapeHtml(title)+' · 逐句对比</span>'+
+      '<span class="diff-meta">'+aLen+' → '+bLen+' 字 · 同 '+eqCount+' · 改 '+modCount+' · 删 '+delOnly+' · 增 '+addOnly+'</span>'+
+      '</div>';
+    $diffView.innerHTML=header+rows.join('');
+  }
+  var $diffTabs=document.getElementById("diffTabs");
+  var $btnDiffExit=document.getElementById("btnDiffExit");
+  function setDiffPair(pair){
+    state.diffPair=pair;
+    var tabs=$diffTabs.querySelectorAll(".diff-tab:not(.diff-tab-exit)");
+    for(var i=0;i<tabs.length;i++){
+      if(tabs[i].getAttribute("data-pair")===pair) tabs[i].classList.add("active");
+      else tabs[i].classList.remove("active");
+    }
+    renderDiff(pair);
+  }
+  $diffTabs.addEventListener("click",function(e){
+    var btn=e.target.closest(".diff-tab:not(.diff-tab-exit)");
+    if(!btn) return;
+    setDiffPair(btn.getAttribute("data-pair"));
+  });
+  $btnDiffExit.addEventListener("click",function(){ toggleDiff(false); });
+  function toggleDiff(on){
+    state.diffOn=on;
+    if(on){
+      setDiffPair(state.diffPair);
+      $diffView.style.display="block";
+      $diffTabs.style.display="flex";
+      $resultText.style.display="none";
+      $btnDiff.textContent="退出 Diff";
+      $btnDiff.classList.add("done");
+    }else{
+      $diffView.style.display="none";
+      $diffTabs.style.display="none";
+      $diffView.innerHTML="";
+      $resultText.style.display="block";
+      $btnDiff.textContent="Diff 对比";
+      $btnDiff.classList.remove("done");
+    }
+  }
+  $btnDiff.addEventListener("click",function(){ toggleDiff(!state.diffOn); });
 
   // ===== copy all =====
   $btnCopyAll.addEventListener("click",function(){
@@ -1123,19 +3431,46 @@
     var all=state.lastChunks.join("\n\n---\n\n");
     copyText(all,$btnCopyAll);
   });
+  $btnExpandAll.addEventListener("click", function(){ setAllCardsExpanded(true); });
+  $btnCollapseAll.addEventListener("click", function(){ setAllCardsExpanded(false); });
 
   // ===== clear =====
   function clearAll(){
     $src.value="";
     updateCount();
     state.lastChunks=[];
+    state.diffOn=false;
+    state.diffPair="raw-model";
+    state.rawText="";
+    state.cleanedText="";
+    state.algoText="";
+    state.modelText="";
+    state.lastAlgoText="";
+    state.lastTarget=0;
+    state.streamContext=null;
     $grid.innerHTML='<div class="empty-state"><span class="glyph">- - -</span>粘贴文本并点击「拆分」后，卡片将在此处生成</div>';
     $outStat.textContent="等待输入信号…";
     $btnCopyAll.style.display="none";
     $compressResult.classList.remove("show");
+    $resultWarn.classList.remove("show");
+    $diffView.style.display="none";
+    $diffTabs.style.display="none";
+    $diffView.innerHTML="";
+    $resultText.style.display="block";
+    $btnDiff.textContent="Diff 对比";
+    $btnDiff.classList.remove("done");
     hideProgress();
     stopModelTimer();
     hideMsg();
+    // Change 2: 清空抽屉式结果 Tab + 再拆分输入区
+    state.resultStack = [];
+    state.activeResultTabId = null;
+    state.resplitCounter = 0;
+    state.mergeCounter = 0;
+    if($resultStack) $resultStack.style.display = "none";
+    if($resplitInput) $resplitInput.style.display = "none";
+    // Change 3: 隐藏算法/模型切换按钮
+    if($resultViewTabs) $resultViewTabs.style.display = "none";
     $src.focus();
   }
   $btnClear.addEventListener("click",clearAll);
@@ -1176,9 +3511,32 @@
   });
 
   // ===== init =====
+  // 旧版 deepseek-chat / deepseek-reasoner 自动迁移到 deepseek-v4-flash
+  if(state.provider === 'deepseek' && (state.model === 'deepseek-chat' || state.model === 'deepseek-reasoner')){
+    state.model = 'deepseek-v4-flash';
+    localStorage.setItem('aitxt.model', 'deepseek-v4-flash');
+  }
   updateModeBadge();
+  $firstChunkMode.classList.add("disabled");
+  $providerSel.value=state.provider;
+  refreshModelOptions();
+  updateProviderUI();
+  // 初始化比例组禁用状态（模型默认勾选 → 禁用比例）
+  setRatioGroupDisabled(state.useModel);
+  // Task 3: 初始化目标字数模式 UI
+  applyTargetModeUI();
+  // 从 localStorage 恢复配置到 UI
+  $apiKeyInput.value = state.apiKey || '';
+  $reasoningSel.value = state.reasoningEffort || 'high';
+  $customBaseUrl.value = state.baseUrl || '';
+  $customModel.value = (state.provider === 'custom') ? (state.model || '') : '';
   // 如果页面加载时深度压缩已勾选（不太可能，但兜底），启动健康检查
   if($optDeep.checked){ $deepConfig.classList.add("show"); startHealthPolling(); }
+
+  // 启动时尝试加载默认提示词（后端未运行也无妨，文本框留空）
+  initPromptPanel();
+  // 启动时主动刷新一次本地 Ollama 模型列表（同步新下载的模型）
+  refreshOllamaModels();
 })();
 </script>
 </body>
