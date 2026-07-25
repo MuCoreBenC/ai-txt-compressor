@@ -440,6 +440,18 @@
   .result-text-box::-webkit-scrollbar-thumb:hover{background:var(--accent-dim)}
   .result-foot{padding:10px 0 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
   .result-view-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+  /* 思考过程面板 */
+  .reasoning-panel{margin:0 0 10px;border:1px solid var(--border-soft);border-radius:4px;background:rgba(255,255,255,.015);overflow:hidden}
+  .reasoning-head{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface-2);border-bottom:1px solid var(--border-soft);font-size:11px;letter-spacing:.1em}
+  .reasoning-title{color:var(--accent-2);font-weight:600;text-transform:uppercase}
+  .reasoning-cnt{color:var(--muted);font-size:11px}
+  .reasoning-toggle{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:10px;padding:3px 8px;cursor:pointer;border-radius:3px;text-transform:uppercase;letter-spacing:.1em}
+  .reasoning-toggle:hover{border-color:var(--accent-dim);color:var(--accent)}
+  .reasoning-body{padding:10px 14px;max-height:280px;overflow-y:auto;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--muted);white-space:pre-wrap;word-break:break-word;border-left:2px solid var(--accent-2);margin:8px 10px;background:rgba(0,0,0,.15);border-radius:2px}
+  .reasoning-body::-webkit-scrollbar{width:6px}
+  .reasoning-body::-webkit-scrollbar-track{background:transparent}
+  .reasoning-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .reasoning-panel.collapsed .reasoning-body{display:none}
   .result-stack{margin-top:14px;border:1px solid var(--border);border-radius:4px;overflow:hidden}
   .stack-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;background:var(--surface-2);border-bottom:1px solid var(--border-soft)}
   .stack-tab{font-family:var(--mono);background:var(--bg-2);color:var(--muted);border:1px solid var(--border);border-radius:3px;padding:6px 12px;font-size:11.5px;cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:6px}
@@ -755,6 +767,7 @@
               </optgroup>
             </select>
             <button id="btnOpenPullDialog" class="ta-tool" title="下载新模型">↓ 下载模型</button>
+            <button id="btnUnloadModel" class="ta-tool" title="从内存卸载当前 Ollama 模型（释放显存/内存）" style="display:none">⏏ 卸载模型</button>
             <a href="https://api-docs.deepseek.com/quick_start/pricing" target="_blank" rel="noopener" title="DeepSeek 价格文档" style="font-size:13px;color:var(--accent-dim);text-decoration:none;letter-spacing:.1em;align-self:center">?</a>
           </div>
           <div class="dc-row" id="customConfigRow" style="display:none;flex-direction:column;align-items:stretch;gap:8px;border-top:1px dashed var(--border-soft);padding-top:10px;margin-top:6px">
@@ -777,7 +790,9 @@
               <option value="none">不思考</option>
               <option value="high" selected>高（默认）</option>
               <option value="max">最强</option>
+              <option value="custom">自定义…</option>
             </select>
+            <input type="text" id="reasoningCustom" placeholder="如 medium/low/xhigh 或数值" style="display:none;width:140px;padding:6px 8px;font-size:12px;font-family:var(--mono);background:var(--bg-2);border:1px solid var(--border);border-radius:3px;color:var(--text)" title="自定义推理强度（直接传给厂商 API）" />
             <span id="reasoningHint" class="hint" style="display:none;color:var(--accent-2);font-size:12px">DeepSeek V4 仅支持 high/max</span>
           </div>
           <div class="dc-row">
@@ -860,6 +875,15 @@
           <div class="result-view-tabs" id="resultViewTabs" style="display:none">
             <button type="button" class="diff-tab" id="btnViewAlgo">算法</button>
             <button type="button" class="diff-tab active" id="btnViewModel">模型</button>
+          </div>
+          <div class="reasoning-panel" id="reasoningPanel" style="display:none">
+            <div class="reasoning-head">
+              <span class="reasoning-title">💭 思考过程</span>
+              <span class="reasoning-cnt" id="reasoningCnt">0 字</span>
+              <span style="flex:1"></span>
+              <button type="button" class="reasoning-toggle" id="btnToggleReasoning">收起</button>
+            </div>
+            <div class="reasoning-body" id="reasoningBody"></div>
           </div>
           <div class="result-text-box" id="resultText">--</div>
           <div class="diff-view" id="diffView" style="display:none"></div>
@@ -1130,6 +1154,11 @@
   var $resultViewTabs=document.getElementById("resultViewTabs");
   var $btnViewAlgo=document.getElementById("btnViewAlgo");
   var $btnViewModel=document.getElementById("btnViewModel");
+  // 思考过程面板
+  var $reasoningPanel=document.getElementById("reasoningPanel");
+  var $reasoningBody=document.getElementById("reasoningBody");
+  var $reasoningCnt=document.getElementById("reasoningCnt");
+  var $btnToggleReasoning=document.getElementById("btnToggleReasoning");
   var $resultStack=document.getElementById("resultStack");
   var $stackTabs=document.getElementById("stackTabs");
   var $stackBody=document.getElementById("stackBody");
@@ -1166,6 +1195,7 @@
     rawText:"", cleanedText:"", algoText:"", modelText:"",
     resultView: localStorage.getItem("aitxt.resultView") || "model",
     resultStack: [],
+    reasoningText: '',    // 模型思考链全文（DeepSeek reasoning_content / Ollama thinking 标签）
     activeResultTabId: null,
     resplitCounter: 0,
     mergeCounter: 0,
@@ -1495,10 +1525,64 @@
     $apiKeyInput.type = isPwd ? 'text' : 'password';
     $btnToggleKey.textContent = isPwd ? '🙈' : '👁';
   });
+  // 推理强度下拉 + 自定义输入
+  var $reasoningCustom=document.getElementById("reasoningCustom");
+  var $btnUnloadModel=document.getElementById("btnUnloadModel");
   $reasoningSel.addEventListener("change",function(){
-    state.reasoningEffort=$reasoningSel.value;
-    localStorage.setItem("aitxt.reasoningEffort", state.reasoningEffort);
+    var v=$reasoningSel.value;
+    if(v === "custom"){
+      $reasoningCustom.style.display='inline-block';
+      $reasoningCustom.focus();
+      // 自定义值用 localStorage 持久化
+      var saved=localStorage.getItem("aitxt.reasoningEffortCustom") || "";
+      $reasoningCustom.value = saved;
+      state.reasoningEffort = saved || "high";
+    } else {
+      $reasoningCustom.style.display='none';
+      state.reasoningEffort=v;
+      localStorage.setItem("aitxt.reasoningEffort", v);
+    }
   });
+  if($reasoningCustom){
+    $reasoningCustom.addEventListener("input",function(){
+      var v=$reasoningCustom.value.trim();
+      state.reasoningEffort=v || "high";
+      localStorage.setItem("aitxt.reasoningEffortCustom", v);
+    });
+  }
+  // 卸载 Ollama 模型：调用 /ollama/tags 接口拿当前模型名，再调 /ollama/pull with keep_alive=0
+  // Ollama 卸载模型的方式：POST /api/generate { model: name, keep_alive: 0 }
+  if($btnUnloadModel){
+    $btnUnloadModel.addEventListener("click", async function(){
+      if(state.provider !== 'ollama'){
+        alert('卸载模型仅对本地 Ollama 提供商可用');
+        return;
+      }
+      var name = state.model;
+      if(!name){ alert('未选择模型'); return; }
+      if(!confirm('确认从内存卸载模型「' + name + '」？\n下次调用需重新加载到内存（首次 30-90 秒）')) return;
+      $btnUnloadModel.disabled = true;
+      $btnUnloadModel.textContent = '⏏ 卸载中…';
+      try{
+        // Ollama 卸载模型：POST /api/generate with keep_alive: 0
+        var res = await fetch(state.baseURL + '/ollama/generate', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({model: name, keep_alive: 0})
+        });
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        $btnUnloadModel.textContent = '✓ 已卸载';
+        setTimeout(function(){
+          $btnUnloadModel.textContent = '⏏ 卸载模型';
+          $btnUnloadModel.disabled = false;
+        }, 2000);
+      }catch(e){
+        $btnUnloadModel.textContent = '⏏ 卸载模型';
+        $btnUnloadModel.disabled = false;
+        alert('卸载失败：' + (e.message || e) + '\n\n若 /ollama/generate 接口未实现，可改用停止 Ollama 服务的方式释放显存。');
+      }
+    });
+  }
 
   // ===== ratio selector =====
   $ratioGroup.addEventListener("click",function(e){
@@ -2146,8 +2230,49 @@
           input_chars: event.input_chars
         };
         startModelTimer();
+        // 立即显示加载提示，避免误以为卡死
+        $logSummary.innerHTML = '模型加载中… · 已等 <b>0</b>s（首次调用需加载模型到内存，请耐心等）';
+        $logSummary.classList.remove("warn","err");
+        $resultText.textContent = '（模型加载中… 算法阶段已完成，正在等待模型响应）';
+        // 重置思考过程面板
+        state.reasoningText = '';
+        if($reasoningBody) $reasoningBody.textContent = '';
+        if($reasoningCnt) $reasoningCnt.textContent = '0 字';
+        if($reasoningPanel) $reasoningPanel.style.display = 'none';
+        break;
+      case "ModelHeartbeat":
+        // 后端心跳事件：模型还没返回第一个 token，但后端还活着
+        var hbPhase = event.phase || '等待模型响应中';
+        appendLogEntry({t:t, level:'info', stage:'model',
+          msg:'⏳ ' + hbPhase});
+        $logSummary.innerHTML = hbPhase;
+        $logSummary.classList.remove("err");
+        // 若 resultText 还是初始加载提示，更新为更具体的阶段提示
+        if($resultText.textContent.indexOf('模型加载中') === 0 || $resultText.textContent.indexOf('（模型') === 0){
+          $resultText.textContent = '（' + hbPhase + '，请耐心等待…）';
+        }
+        break;
+      case "ModelReasoning":
+        // 模型思考链增量（DeepSeek reasoning_content / Ollama qwen3 thinking 标签）
+        if(!$reasoningPanel) break;
+        $reasoningPanel.style.display = 'block';
+        $reasoningPanel.classList.remove('collapsed');
+        if($btnToggleReasoning) $btnToggleReasoning.textContent = '收起 ▴';
+        state.reasoningText = (state.reasoningText || '') + (event.delta || '');
+        if($reasoningBody) $reasoningBody.textContent = state.reasoningText;
+        if($reasoningCnt) $reasoningCnt.textContent = state.reasoningText.length + ' 字';
+        // 自动滚动到底部
+        if($reasoningBody) $reasoningBody.scrollTop = $reasoningBody.scrollHeight;
+        // 顶部摘要更新
+        var rMs = modelStartTime ? (Date.now() - modelStartTime) : 0;
+        $logSummary.innerHTML = '思考中 · 已 <b>' + state.reasoningText.length + '</b> 字 · <b>' + rMs + '</b>ms';
+        $logSummary.classList.remove("warn","err");
         break;
       case "ModelDelta":
+        // 第一次收到 delta 时清空加载提示
+        if($resultText.textContent.indexOf('（模型') === 0 || $resultText.textContent.indexOf('模型加载中') === 0){
+          $resultText.textContent = '';
+        }
         $resultText.textContent += (event.delta || '');
         // 更新顶部"模型输出中 · 已 N 字 · Mms"计数
         var curChars = $resultText.textContent.length;
@@ -3081,6 +3206,14 @@
   // ===== Change 3: 算法/模型视图切换 =====
   $btnViewAlgo.addEventListener("click", function(){ setResultView("algo"); });
   $btnViewModel.addEventListener("click", function(){ setResultView("model"); });
+  // 思考过程面板折叠/展开
+  if($btnToggleReasoning){
+    $btnToggleReasoning.addEventListener("click", function(){
+      $reasoningPanel.classList.toggle('collapsed');
+      var collapsed = $reasoningPanel.classList.contains('collapsed');
+      $btnToggleReasoning.textContent = collapsed ? '展开 ▾' : '收起 ▴';
+    });
+  }
 
   // ===== Change 2: 抽屉式结果 Tab + 再拆分 + 合并 =====
   function pushResultTab(title, pieces, source, limit, firstLimit){

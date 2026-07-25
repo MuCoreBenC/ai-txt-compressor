@@ -4,7 +4,7 @@
 //! 供前端日志面板展示。
 
 use serde::{Deserialize, Serialize};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -163,6 +163,21 @@ pub enum StreamEvent {
         input_chars: usize,
         system_prompt: String,
         user_prompt: String,
+        t: u64,
+    },
+    /// 模型加载/推理中心跳事件：在 ModelStart 后到第一个 ModelDelta 之间周期性推送
+    /// 让前端知道还在等待，避免误以为卡死
+    ModelHeartbeat {
+        /// 距离 ModelStart 的毫秒数
+        elapsed_ms: u64,
+        /// 状态提示文案
+        phase: String,
+        t: u64,
+    },
+    /// 模型思考链增量（DeepSeek reasoning_content / Ollama qwen3  satisfied 标签）
+    /// 实时推送，前端在思考过程面板追加显示
+    ModelReasoning {
+        delta: String,
         t: u64,
     },
     ModelDelta {
@@ -861,6 +876,53 @@ pub async fn compress_stream(
             .await;
 
         let t1 = Instant::now();
+
+        // 启动心跳 task：在 ModelStart 后到 ModelDone 之间周期性推送 ModelHeartbeat
+        // 让前端知道后端还活着、模型还在加载/推理，避免误以为卡死
+        let (heartbeat_stop_tx, mut heartbeat_stop_rx) = mpsc::channel::<()>(1);
+        let heartbeat_sink = sink.clone();
+        let heartbeat_provider = opts.provider.clone();
+        let heartbeat_input = after_algo;
+        let heartbeat_start = t1;
+        let heartbeat_handle = tokio::spawn(async move {
+            // 第一个 tick 立即返回，跳过避免立即推送
+            let mut interval = tokio::time::interval(Duration::from_secs(10));
+            interval.tick().await;
+            loop {
+                tokio::select! {
+                    biased;
+                    _ = heartbeat_stop_rx.recv() => break,
+                    _ = interval.tick() => {
+                        let elapsed = heartbeat_start.elapsed().as_secs();
+                        // Ollama 本地模型三阶段提示：加载（<30s）→ prompt 评估（30-90s）→ 推理生成（>90s）
+                        let phase = if heartbeat_provider == "ollama" {
+                            if elapsed < 30 {
+                                format!("模型加载中 · 已等 {}s（首次需把模型从磁盘加载到内存）", elapsed)
+                            } else if elapsed < 90 {
+                                format!("Prompt 评估中 · 已等 {}s（输入 {} 字逐 token 评估）", elapsed, heartbeat_input)
+                            } else {
+                                format!("推理生成中 · 已等 {}s（thinking 模式会先思考再生成，请耐心等）", elapsed)
+                            }
+                        } else {
+                            // deepseek / custom 远程 API，通常 5-30 秒返回
+                            if elapsed < 30 {
+                                format!("等待 API 响应 · 已等 {}s", elapsed)
+                            } else {
+                                format!("API 仍无响应 · 已等 {}s（可能网络慢或排队中）", elapsed)
+                            }
+                        };
+                        let _ = heartbeat_sink
+                            .send(StreamEvent::ModelHeartbeat {
+                                elapsed_ms: heartbeat_start.elapsed().as_millis() as u64,
+                                phase,
+                                t: 0,
+                            })
+                            .await;
+                    }
+                }
+            }
+        });
+
         let model_result: anyhow::Result<ModelOutputKind> = match opts.provider.as_str() {
             "deepseek" => {
                 let key = opts.api_key.as_deref().unwrap_or("");
@@ -888,6 +950,10 @@ pub async fn compress_stream(
                     .map(ModelOutputKind::Ollama)
             }
         };
+
+        // 停止心跳 task
+        let _ = heartbeat_stop_tx.send(()).await;
+        let _ = heartbeat_handle.await;
 
         let model_ms = t1.elapsed().as_millis() as u64;
 

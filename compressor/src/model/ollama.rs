@@ -7,12 +7,121 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+/// Qwen3 thinking 标签解析状态机
+/// 处理流式到达的 content，分离开标签和闭标签之间的思考链
+/// 支持跨 chunk 边界的标签（如 `<th` + `ink>`）
+struct ThinkingParser {
+    /// 当前是否在思考链内
+    in_thinking: bool,
+    /// 缓冲区：用于处理跨 chunk 的标签
+    buf: String,
+    /// 累积的实际输出增量（待 take_output 取走）
+    output_buf: String,
+    /// 累积的思考链增量（待 take_reasoning 取走）
+    reasoning_buf: String,
+    /// 累积的实际输出全文（用于最终返回值）
+    output_full: String,
+}
+
+impl ThinkingParser {
+    fn new() -> Self {
+        Self {
+            in_thinking: false,
+            buf: String::new(),
+            output_buf: String::new(),
+            reasoning_buf: String::new(),
+            output_full: String::new(),
+        }
+    }
+
+    /// 喂入一段 content，更新内部状态
+    /// 算法：维护一个 buf，扫描开标签和闭标签
+    /// 标签之前/之外的内容加入 output_buf 或 reasoning_buf（视当前状态）
+    /// 标签本身不输出，只切换状态
+    fn feed(&mut self, content: &str) {
+        self.buf.push_str(content);
+        loop {
+            if self.in_thinking {
+                // 寻找闭标签（用 Unicode 转义避免被渲染）
+                let close_tag = "\u{3c}/think\u{3e}";
+                if let Some(pos) = self.buf.find(close_tag) {
+                    // 闭标签之前的内容是思考链
+                    self.reasoning_buf.push_str(&self.buf[..pos]);
+                    // 跳过闭标签
+                    self.buf.drain(..pos + close_tag.len());
+                    self.in_thinking = false;
+                    // 继续循环处理剩余
+                } else {
+                    // 没找到闭标签，可能标签跨 chunk
+                    // 保留末尾 7 字符（闭标签前缀长度）以防被截断
+                    if self.buf.len() > 7 {
+                        let safe_end = self.buf.len() - 7;
+                        let safe = self.buf[..safe_end].to_string();
+                        self.reasoning_buf.push_str(&safe);
+                        self.buf.drain(..safe_end);
+                    }
+                    break;
+                }
+            } else {
+                // 寻找开标签（用 Unicode 转义避免被渲染）
+                let open_tag = "\u{3c}think\u{3e}";
+                if let Some(pos) = self.buf.find(open_tag) {
+                    // 开标签之前的内容是实际输出
+                    self.output_buf.push_str(&self.buf[..pos]);
+                    self.output_full.push_str(&self.buf[..pos]);
+                    // 跳过开标签
+                    self.buf.drain(..pos + open_tag.len());
+                    self.in_thinking = true;
+                    // 继续循环处理剩余
+                } else {
+                    // 没找到开标签，可能标签跨 chunk
+                    // 保留末尾 6 字符（开标签前缀长度）以防被截断
+                    if self.buf.len() > 6 {
+                        let safe_end = self.buf.len() - 6;
+                        let safe = self.buf[..safe_end].to_string();
+                        self.output_buf.push_str(&safe);
+                        self.output_full.push_str(&safe);
+                        self.buf.drain(..safe_end);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    /// 取出累积的实际输出增量
+    fn take_output(&mut self) -> String {
+        std::mem::take(&mut self.output_buf)
+    }
+
+    /// 取出累积的思考链增量
+    fn take_reasoning(&mut self) -> String {
+        std::mem::take(&mut self.reasoning_buf)
+    }
+
+    /// 流结束时把 buf 残余内容按当前状态刷出
+    fn flush(&mut self) {
+        if self.in_thinking {
+            // thinking 未闭合，把残余当思考链
+            self.reasoning_buf.push_str(&self.buf);
+        } else {
+            self.output_buf.push_str(&self.buf);
+            self.output_full.push_str(&self.buf);
+        }
+        self.buf.clear();
+    }
+}
+
 #[derive(Serialize)]
 struct ChatRequest<'a> {
     model: &'a str,
     messages: Vec<Message<'a>>,
     stream: bool,
     options: Options,
+    /// Ollama keep_alive 参数：模型在内存中保持的时间，避免每次重新加载
+    /// 默认 5m，这里设为 30m 让模型常驻内存，第二次调用起跳过加载阶段
+    #[serde(rename = "keep_alive")]
+    keep_alive: &'a str,
 }
 
 #[derive(Serialize)]
@@ -90,6 +199,7 @@ impl OllamaClient {
                 temperature: 0.3,
                 top_p: 0.9,
             },
+            keep_alive: "30m",
         };
         let resp = self
             .client
@@ -110,8 +220,13 @@ impl OllamaClient {
         };
         let body: ChatResponse = serde_json::from_str(&raw_text)
             .context(format!("解析 Ollama 响应失败，原始：{}", raw_truncated))?;
+        // 对 qwen3 thinking 模型，去除思考链标签内容
+        let mut parser = ThinkingParser::new();
+        parser.feed(&body.message.content);
+        parser.flush();
+        let clean_content = parser.output_full.trim().to_string();
         Ok(OllamaOutput {
-            content: body.message.content.trim().to_string(),
+            content: clean_content,
             prompt_eval_count: body.prompt_eval_count.unwrap_or(0),
             eval_count: body.eval_count.unwrap_or(0),
             raw_response: raw_truncated,
@@ -145,6 +260,7 @@ impl OllamaClient {
                 temperature: 0.3,
                 top_p: 0.9,
             },
+            keep_alive: "30m",
         };
         let resp = self
             .client
@@ -165,6 +281,8 @@ impl OllamaClient {
         let mut line_buf = String::new();
         let mut prompt_eval_count: u32 = 0;
         let mut eval_count: u32 = 0;
+        // thinking 标签解析状态机
+        let mut thinking_parser = ThinkingParser::new();
         // 流式读取容错：单个 chunk 失败不直接返回 Err，记录 warn 后 break 循环
         // 保留已累积的 content_buf，流结束后判断是否完全失败
         let mut chunk_success: bool = false;
@@ -214,15 +332,33 @@ impl OllamaClient {
                 };
 
                 // 提取 message.content（增量）
+                // 对 qwen3 等支持 thinking 的模型，content 可能含开闭标签
+                // 需要分离 thinking（推送 ModelReasoning）和实际输出（推送 ModelDelta）
                 if let Some(content) = value["message"]["content"].as_str() {
                     if !content.is_empty() {
                         content_buf.push_str(content);
-                        let _ = sink
-                            .send(crate::pipeline::StreamEvent::ModelDelta {
-                                delta: content.to_string(),
-                                t: 0,
-                            })
-                            .await;
+                        // 把 content 喂进 thinking 解析状态机
+                        thinking_parser.feed(content);
+                        // 取出解析出的实际输出增量
+                        let output_delta = thinking_parser.take_output();
+                        if !output_delta.is_empty() {
+                            let _ = sink
+                                .send(crate::pipeline::StreamEvent::ModelDelta {
+                                    delta: output_delta,
+                                    t: 0,
+                                })
+                                .await;
+                        }
+                        // 取出解析出的思考链增量
+                        let reasoning_delta = thinking_parser.take_reasoning();
+                        if !reasoning_delta.is_empty() {
+                            let _ = sink
+                                .send(crate::pipeline::StreamEvent::ModelReasoning {
+                                    delta: reasoning_delta,
+                                    t: 0,
+                                })
+                                .await;
+                        }
                     }
                 }
 
@@ -234,6 +370,29 @@ impl OllamaClient {
                     eval_count = ec as u32;
                 }
             }
+        }
+
+        // 流结束：刷出 thinking_parser 残余内容
+        thinking_parser.flush();
+        // 把残余实际输出推送给前端
+        let tail_output = thinking_parser.take_output();
+        if !tail_output.is_empty() {
+            let _ = sink
+                .send(crate::pipeline::StreamEvent::ModelDelta {
+                    delta: tail_output,
+                    t: 0,
+                })
+                .await;
+        }
+        // 把残余思考链推送给前端
+        let tail_reasoning = thinking_parser.take_reasoning();
+        if !tail_reasoning.is_empty() {
+            let _ = sink
+                .send(crate::pipeline::StreamEvent::ModelReasoning {
+                    delta: tail_reasoning,
+                    t: 0,
+                })
+                .await;
         }
 
         // 流结束后判断：
@@ -262,8 +421,15 @@ impl OllamaClient {
             raw_buf
         };
 
+        // content 用 thinking_parser 分离后的实际输出（去除思考链）
+        let final_content = if thinking_parser.output_full.trim().is_empty() {
+            content_buf.trim().to_string()
+        } else {
+            thinking_parser.output_full.trim().to_string()
+        };
+
         Ok(OllamaOutput {
-            content: content_buf.trim().to_string(),
+            content: final_content,
             prompt_eval_count,
             eval_count,
             raw_response: raw_truncated,

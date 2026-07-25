@@ -346,10 +346,16 @@ impl OpenAiCompatClient {
                 }
 
                 // 提取 delta.reasoning_content（DeepSeek V4 thinking mode 的思考链增量）
-                // 与 content 平级，只累计不推送给前端结果文本框，避免污染压缩结果
+                // 与 content 平级，通过 ModelReasoning 事件实时推送给前端思考面板
                 if let Some(reasoning) = value["choices"][0]["delta"]["reasoning_content"].as_str() {
                     if !reasoning.is_empty() {
                         reasoning_buf.push_str(reasoning);
+                        let _ = sink
+                            .send(crate::pipeline::StreamEvent::ModelReasoning {
+                                delta: reasoning.to_string(),
+                                t: 0,
+                            })
+                            .await;
                     }
                 }
 
