@@ -2024,6 +2024,8 @@
   }
   function stopModelTimer(){
     if(modelTimerId){ clearInterval(modelTimerId); modelTimerId=null; }
+    // 同时停止心跳客户端计时器（避免模型已结束后仍持续更新 logSummary 秒数）
+    if(state.hbTimer){ clearInterval(state.hbTimer); state.hbTimer = null; }
     if(modelStartTime){
       var final=((Date.now()-modelStartTime)/1000).toFixed(1);
       $modelTimer.textContent=final+"s";
@@ -2249,8 +2251,24 @@
           input_chars: event.input_chars
         };
         startModelTimer();
+        // 启动客户端心跳计时器：每秒独立更新 logSummary 的秒数，
+        // 避免后端心跳停止后秒数冻结在最后一次心跳的值
+        if(state.hbTimer) clearInterval(state.hbTimer);
+        state.lastHeartbeatPhase = '模型加载中…';
+        state.hbTimer = setInterval(function(){
+          if(!modelStartTime){ return; }
+          if(state.firstDeltaReceived || state.inThinking){
+            // 已收到首个 delta 或进入思考，停止心跳计时器（其他 case 会接管 logSummary）
+            clearInterval(state.hbTimer);
+            state.hbTimer = null;
+            return;
+          }
+          var elapsedSec = Math.floor((Date.now() - modelStartTime) / 1000);
+          var phase = state.lastHeartbeatPhase || '等待模型响应';
+          $logSummary.innerHTML = phase + ' · 已等 <b>' + elapsedSec + '</b>s';
+        }, 1000);
         // 立即显示加载提示，避免误以为卡死
-        $logSummary.innerHTML = '模型加载中… · 已等 <b>0</b>s（首次调用需加载模型到内存，请耐心等）';
+        $logSummary.innerHTML = state.lastHeartbeatPhase + ' · 已等 <b>0</b>s';
         $logSummary.classList.remove("warn","err");
         $resultText.textContent = '（模型加载中… 算法阶段已完成，正在等待模型响应）';
         // 重置思考过程面板
@@ -2263,15 +2281,22 @@
         break;
       case "ModelHeartbeat":
         // 后端心跳事件：模型还没返回第一个 token，但后端还活着
+        // 仅保存 phase 文案，logSummary 由客户端计时器每秒独立更新秒数（避免冻结）
         var hbPhase = event.phase || '等待模型响应中';
+        state.lastHeartbeatPhase = hbPhase;
         appendLogEntry({t:t, level:'info', stage:'model',
           msg:'⏳ ' + hbPhase});
-        $logSummary.innerHTML = hbPhase;
         $logSummary.classList.remove("err");
+        // 立即同步一次显示（不等 1s 计时器）
+        if(!state.firstDeltaReceived && !state.inThinking && modelStartTime){
+          var elapsedSec0 = Math.floor((Date.now() - modelStartTime) / 1000);
+          $logSummary.innerHTML = hbPhase + ' · 已等 <b>' + elapsedSec0 + '</b>s';
+        }
         // 仅在未收到首个 delta 时更新加载提示，避免覆盖流式输出
         if(!state.firstDeltaReceived && (
           $resultText.textContent.indexOf('模型加载中') === 0 ||
-          $resultText.textContent.indexOf('（模型') === 0
+          $resultText.textContent.indexOf('（模型') === 0 ||
+          $resultText.textContent.indexOf('（⏳') === 0
         )){
           $resultText.textContent = '（' + hbPhase + '，请耐心等待…）';
         }
@@ -2323,10 +2348,14 @@
           if($btnToggleReasoning) $btnToggleReasoning.textContent = '展开 ▾';
         }
         stopModelTimer();
+        // 停止心跳计时器（避免持续更新已完成的 logSummary）
+        if(state.hbTimer){ clearInterval(state.hbTimer); state.hbTimer = null; }
         break;
       case "Fallback":
         var fbReason = event.reason || event.msg || '';
         appendLogEntry({t:t, level:'warn', stage:'fallback', msg:'回退：' + fbReason});
+        // 停止心跳计时器（fallback 后不再需要"已等 Ns"提示）
+        if(state.hbTimer){ clearInterval(state.hbTimer); state.hbTimer = null; }
         // 同步到 state.lastLog，供后续 renderRunLog 正确显示回退原因
         if(state.lastLog){
           state.lastLog.fallback_triggered = true;
@@ -2336,6 +2365,8 @@
         }
         break;
       case "Done":
+        // 停止心跳计时器（流程结束兜底）
+        if(state.hbTimer){ clearInterval(state.hbTimer); state.hbTimer = null; }
         // Task 9: 字数不达标检测
         if(state.lastTarget > 0){
           var target = state.lastTarget;
@@ -2355,6 +2386,8 @@
       case "Error":
         var errMsg = event.msg || event.error || '未知错误';
         appendLogEntry({t:t, level:'error', stage:'error', msg:'[ERROR] ' + errMsg});
+        // 停止心跳计时器（出错后不再需要"已等 Ns"提示）
+        if(state.hbTimer){ clearInterval(state.hbTimer); state.hbTimer = null; }
         // 额外把错误详情写入 state.lastLog，供 renderRunLog 在 model_call=null 时显示
         if(state.lastLog){
           state.lastLog.error = errMsg;
