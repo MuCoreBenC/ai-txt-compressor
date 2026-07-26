@@ -99,10 +99,10 @@ pub async fn run(args: crate::Cli) -> anyhow::Result<()> {
         std::env::var("DEEPSEEK_API_KEY").ok().filter(|s| !s.is_empty())
     };
     if deepseek_key.is_some() {
-        eprintln!("[server] DeepSeek API key 已配置（来自 {}）",
+        tracing::info!("[server] DeepSeek API key 已配置（来自 {}）",
             if !args.api_key.is_empty() { "--api-key 参数" } else { "DEEPSEEK_API_KEY 环境变量" });
     } else {
-        eprintln!("[server] DeepSeek API key 未配置（设置环境变量 DEEPSEEK_API_KEY 或启动时传 --api-key）");
+        tracing::warn!("[server] DeepSeek API key 未配置（设置环境变量 DEEPSEEK_API_KEY 或启动时传 --api-key）");
     }
     let state = Arc::new(AppState { args: args.clone(), deepseek_key });
 
@@ -121,13 +121,14 @@ pub async fn run(args: crate::Cli) -> anyhow::Result<()> {
         .route("/preset-prompts", get(preset_prompts_handler))
         .route("/ollama/pull", post(ollama_pull_handler))
         .route("/ollama/tags", get(ollama_tags_handler))
+        .route("/ollama/unload", post(ollama_unload_handler))
         .route("/shutdown", post(shutdown_handler))
         .layer(cors)
         .with_state(state);
 
     let addr = format!("127.0.0.1:{}", args.port);
-    eprintln!("[server] listening on http://{}", addr);
-    eprintln!("[server] 单文件模式：页面与 API 同源，直接打开上面的地址即可");
+    tracing::info!("[server] listening on http://{}", addr);
+    tracing::info!("[server] 单文件模式：页面与 API 同源，直接打开上面的地址即可");
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;
     Ok(())
@@ -144,7 +145,7 @@ async fn index_handler() -> impl IntoResponse {
 
 /// 停止服务：返回 200 后延迟退出进程（让前端先收到响应）
 async fn shutdown_handler() -> &'static str {
-    eprintln!("[server] 收到 shutdown 请求，200ms 后退出进程");
+    tracing::info!("[server] 收到 shutdown 请求，200ms 后退出进程");
     tokio::spawn(async {
         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
         std::process::exit(0);
@@ -552,5 +553,65 @@ async fn ollama_tags_handler() -> impl IntoResponse {
             }
         }
         _ => Json(empty),
+    }
+}
+
+#[derive(Deserialize)]
+struct OllamaUnloadRequest {
+    model: String,
+}
+
+/// POST /ollama/unload：调用 Ollama /api/generate 传 keep_alive=0 卸载模型
+/// 错误码：E_OLLAMA_UNLOAD_FAILED (1007)
+async fn ollama_unload_handler(
+    Json(req): Json<OllamaUnloadRequest>,
+) -> impl IntoResponse {
+    use crate::errors::AppErrorCode;
+
+    if req.model.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "ok": false,
+                "error": "model 字段不能为空",
+                "error_code": "E_OLLAMA_UNLOAD_FAILED",
+                "error_code_num": AppErrorCode::EOllamaUnloadFailed.code(),
+            })),
+        )
+            .into_response();
+    }
+
+    let client = OllamaClient::new(&req.model);
+    match client.unload_model().await {
+        Ok(_) => {
+            tracing::info!(model = %req.model, "前端请求卸载模型成功");
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "ok": true,
+                    "model": req.model,
+                    "message": "模型已从内存卸载"
+                })),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!(
+                error_code = ?AppErrorCode::EOllamaUnloadFailed.code(),
+                error = %e,
+                model = %req.model,
+                "前端请求卸载模型失败"
+            );
+            (
+                StatusCode::BAD_GATEWAY,
+                Json(serde_json::json!({
+                    "ok": false,
+                    "error": e.to_string(),
+                    "error_code": "E_OLLAMA_UNLOAD_FAILED",
+                    "error_code_num": AppErrorCode::EOllamaUnloadFailed.code(),
+                })),
+            )
+                .into_response()
+        }
     }
 }

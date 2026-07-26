@@ -1557,8 +1557,7 @@
       localStorage.setItem("aitxt.reasoningEffortCustom", v);
     });
   }
-  // 卸载 Ollama 模型：调用 /ollama/tags 接口拿当前模型名，再调 /ollama/pull with keep_alive=0
-  // Ollama 卸载模型的方式：POST /api/generate { model: name, keep_alive: 0 }
+  // 卸载 Ollama 模型：调用后端 /ollama/unload 路由，后端代理到 Ollama /api/generate keep_alive=0
   if($btnUnloadModel){
     $btnUnloadModel.addEventListener("click", async function(){
       if(state.provider !== 'ollama'){
@@ -1571,13 +1570,17 @@
       $btnUnloadModel.disabled = true;
       $btnUnloadModel.textContent = '⏏ 卸载中…';
       try{
-        // Ollama 卸载模型：POST /api/generate with keep_alive: 0
-        var res = await fetch(state.baseURL + '/ollama/generate', {
+        var res = await fetch(state.baseURL + '/ollama/unload', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({model: name, keep_alive: 0})
+          body: JSON.stringify({model: name})
         });
-        if(!res.ok) throw new Error('HTTP ' + res.status);
+        var data = await res.json().catch(function(){return {};});
+        if(!res.ok || !data.ok){
+          var errCode = data.error_code || 'E_OLLAMA_UNLOAD_FAILED';
+          var errNum = data.error_code_num || 1007;
+          throw new Error('卸载失败 [' + errCode + ' ' + errNum + ']：' + (data.error || ('HTTP ' + res.status)));
+        }
         $btnUnloadModel.textContent = '✓ 已卸载';
         setTimeout(function(){
           $btnUnloadModel.textContent = '⏏ 卸载模型';
@@ -1586,7 +1589,12 @@
       }catch(e){
         $btnUnloadModel.textContent = '⏏ 卸载模型';
         $btnUnloadModel.disabled = false;
-        alert('卸载失败：' + (e.message || e) + '\n\n若 /ollama/generate 接口未实现，可改用停止 Ollama 服务的方式释放显存。');
+        var msg = e.message || e;
+        // Safari 网络层失败的错误信息是 "Load failed"，给出更友好的提示
+        if(msg === 'Load failed'){
+          msg = '无法连接到后端服务（请检查 8787 端口是否启动）';
+        }
+        alert('卸载失败：' + msg);
       }
     });
   }

@@ -1026,6 +1026,13 @@ pub async fn compress_stream(
                         "模型输出仅缩短 {:.1}%（{} → {} 字），小于 5% 阈值，回退二次算法",
                         improvement * 100.0, after_algo, after_model
                     );
+                    tracing::warn!(
+                        error_code = ?crate::errors::AppErrorCode::EPipelineImprovementTooLow.code(),
+                        after_algo = after_algo,
+                        after_model = after_model,
+                        improvement = improvement,
+                        "模型输出缩短幅度不足 5%，触发 fallback"
+                    );
                     fallback_reason = Some(reason.clone());
                     entries.push(LogEntry {
                         t: start.elapsed().as_millis() as u64,
@@ -1066,6 +1073,13 @@ pub async fn compress_stream(
                 let err_msg = e.to_string();
                 fallback_triggered = true;
                 let reason = format!("模型调用失败：{}", err_msg);
+                tracing::error!(
+                    error_code = ?crate::errors::AppErrorCode::EPipelineFallbackTriggered.code(),
+                    error = %err_msg,
+                    provider = %opts.provider,
+                    model = %opts.model,
+                    "模型调用失败，触发 fallback"
+                );
                 fallback_reason = Some(reason.clone());
                 entries.push(LogEntry {
                     t: start.elapsed().as_millis() as u64,

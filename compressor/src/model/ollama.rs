@@ -179,6 +179,56 @@ impl OllamaClient {
         }
     }
 
+    /// 测试用构造函数：注入自定义 base_url（用于 mockito 集成测试）
+    pub fn with_base_url(base_url: &str, model: &str) -> Self {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .expect("failed to build reqwest client");
+        Self {
+            base_url: base_url.to_string(),
+            model: model.to_string(),
+            client,
+        }
+    }
+
+    /// 卸载模型：调用 Ollama /api/generate 传 keep_alive=0 让模型从内存释放
+    /// 错误码：E_OLLAMA_UNLOAD_FAILED (1007)
+    pub async fn unload_model(&self) -> Result<()> {
+        let body = serde_json::json!({
+            "model": self.model,
+            "keep_alive": 0
+        });
+        let resp = self
+            .client
+            .post(format!("{}/api/generate", self.base_url))
+            .json(&body)
+            .send()
+            .await
+            .context(format!(
+                "卸载模型失败 (E1007): 无法连接 Ollama ({})",
+                self.base_url
+            ))?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            tracing::error!(
+                error_code = ?crate::errors::AppErrorCode::EOllamaUnloadFailed.code(),
+                status = status.as_u16(),
+                model = %self.model,
+                body = %body,
+                "Ollama 模型卸载失败"
+            );
+            return Err(anyhow::anyhow!(
+                "卸载模型失败 (E1007): Ollama 返回 {} - {}",
+                status,
+                body
+            ));
+        }
+        tracing::info!(model = %self.model, "Ollama 模型已卸载");
+        Ok(())
+    }
+
     /// 调用 Ollama chat 接口，system 隔离指令、user 给原文
     /// 返回完整输出（含 token 用量和原始响应）
     pub async fn compress_full(&self, system: &str, user: &str) -> Result<OllamaOutput> {
@@ -399,14 +449,28 @@ impl OllamaClient {
         // - content_buf 为空且没有任何 chunk 成功 → 返回 Err
         // - content_buf 非空但中途断流 → 正常返回 OllamaOutput，并通过 sink 推送 warn 事件
         if content_buf.trim().is_empty() && !chunk_success {
-            return Err(anyhow::anyhow!(
+            let err = anyhow::anyhow!(
                 "Ollama 流式响应为空：{}",
                 stream_error.unwrap_or_else(|| "未知错误".to_string())
-            ));
+            );
+            tracing::error!(
+                error_code = ?crate::errors::AppErrorCode::EOllamaStreamEmpty.code(),
+                error = %err,
+                model = %self.model,
+                "Ollama 流式响应为空"
+            );
+            return Err(err);
         }
 
         // 中途断流但已有内容：推送 warn 事件（不影响返回值）
         if let Some(err_msg) = stream_error.as_ref() {
+            tracing::warn!(
+                error_code = ?crate::errors::AppErrorCode::EOllamaStreamBreak.code(),
+                error = %err_msg,
+                model = %self.model,
+                content_buf_len = content_buf.len(),
+                "Ollama 流中途断开，已保留部分结果"
+            );
             let _ = sink
                 .send(crate::pipeline::StreamEvent::Fallback {
                     reason: format!("Ollama 流中途断开，已保留部分结果：{}", err_msg),
