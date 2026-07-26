@@ -242,6 +242,47 @@ impl OllamaClient {
         Ok(())
     }
 
+    /// 查询模型是否已加载到内存（Ollama /api/ps 接口）
+    /// 用于避免第二次调用时仍显示"模型加载中"误导用户
+    /// 返回：
+    /// - Ok(true)  : 模型在 /api/ps 的 models 数组中
+    /// - Ok(false) : 模型未加载，或 /api/ps 返回非 200
+    /// - Err(_)    : 网络错误或响应解析失败
+    pub async fn is_model_loaded(&self) -> Result<bool> {
+        let resp = self
+            .client
+            .get(format!("{}/api/ps", self.base_url))
+            .send()
+            .await
+            .context(format!(
+                "查询 Ollama /api/ps 失败: 无法连接 ({})",
+                self.base_url
+            ))?;
+        if !resp.status().is_success() {
+            // /api/ps 返回 5xx 时不报错，默认未加载
+            tracing::warn!(
+                status = resp.status().as_u16(),
+                "Ollama /api/ps 返回非 200，默认未加载"
+            );
+            return Ok(false);
+        }
+        let v: serde_json::Value = resp
+            .json()
+            .await
+            .context("解析 Ollama /api/ps 响应失败")?;
+        // 兼容 name 字段（旧版 Ollama）和 model 字段（新版 Ollama）
+        let loaded = v["models"]
+            .as_array()
+            .map(|arr| {
+                arr.iter().any(|m| {
+                    m["name"].as_str() == Some(self.model.as_str())
+                        || m["model"].as_str() == Some(self.model.as_str())
+                })
+            })
+            .unwrap_or(false);
+        Ok(loaded)
+    }
+
     /// 调用 Ollama chat 接口，system 隔离指令、user 给原文
     /// 返回完整输出（含 token 用量和原始响应）
     pub async fn compress_full(&self, system: &str, user: &str) -> Result<OllamaOutput> {

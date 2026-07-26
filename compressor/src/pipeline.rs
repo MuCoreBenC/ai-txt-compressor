@@ -883,6 +883,25 @@ pub async fn compress_stream(
 
         let t1 = Instant::now();
 
+        // 启动心跳 task 前先查询 Ollama /api/ps 判断模型是否已加载到内存
+        // 已加载时跳过"模型加载中"阶段，避免第二次调用仍误导用户
+        let already_loaded = if opts.provider == "ollama" {
+            let client = crate::model::ollama::OllamaClient::new(&opts.model);
+            match client.is_model_loaded().await {
+                Ok(true) => {
+                    tracing::info!(model = %opts.model, "Ollama 模型已加载到内存，跳过加载阶段提示");
+                    true
+                }
+                Ok(false) => false,
+                Err(e) => {
+                    tracing::warn!(error = %e, "查询 Ollama /api/ps 失败，按未加载处理");
+                    false
+                }
+            }
+        } else {
+            false
+        };
+
         // 启动心跳 task：在 ModelStart 后到 ModelDone 之间周期性推送 ModelHeartbeat
         // 让前端知道后端还活着、模型还在加载/推理，避免误以为卡死
         let (heartbeat_stop_tx, mut heartbeat_stop_rx) = mpsc::channel::<()>(1);
@@ -901,11 +920,17 @@ pub async fn compress_stream(
                     _ = interval.tick() => {
                         let elapsed = heartbeat_start.elapsed().as_secs();
                         // Ollama 本地模型三阶段提示：加载 → Prompt 评估 → 推理生成
+                        // 若模型已加载（第二次调用），跳过"加载中"阶段直接进入"评估中"
                         let phase = if heartbeat_provider == "ollama" {
-                            if elapsed < HB_OLLAMA_LOAD_TO_EVAL_SEC {
+                            let load_threshold = if already_loaded { 0 } else { HB_OLLAMA_LOAD_TO_EVAL_SEC };
+                            if elapsed < load_threshold {
                                 format!("模型加载中 · 已等 {}s（首次需把模型从磁盘加载到内存）", elapsed)
                             } else if elapsed < HB_OLLAMA_EVAL_TO_GEN_SEC {
-                                format!("Prompt 评估中 · 已等 {}s（输入 {} 字逐 token 评估）", elapsed, heartbeat_input)
+                                if already_loaded && elapsed < HEARTBEAT_INTERVAL_SEC {
+                                    format!("模型已加载 · 开始推理（输入 {} 字逐 token 评估）", heartbeat_input)
+                                } else {
+                                    format!("Prompt 评估中 · 已等 {}s（输入 {} 字逐 token 评估）", elapsed, heartbeat_input)
+                                }
                             } else {
                                 format!("推理生成中 · 已等 {}s（thinking 模式会先思考再生成，请耐心等）", elapsed)
                             }
