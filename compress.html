@@ -1239,7 +1239,11 @@
     currentPreset: 'standard', // 当前使用的预设
     // Task 1b: 流式压缩手动停止
     currentAbortController: null,  // 当前流式请求的 AbortController
-    streamStartTime: 0             // 流式开始时间戳（用于日志 t 字段）
+    streamStartTime: 0,             // 流式开始时间戳（用于日志 t 字段）
+    firstDeltaReceived: false,      // 是否已收到首个 ModelDelta（避免心跳覆盖流式输出）
+    inThinking: false,              // 是否处于思考中（用于显示"💭 模型正在思考"占位符）
+    hbTimer: null,                  // 心跳客户端计时器（每秒更新 logSummary 秒数）
+    lastHeartbeatPhase: null        // 最近一次心跳 phase 文案（供计时器使用）
   };
   // 各 provider 对应的模型选项（启动时优先读 localStorage，刷新页面不丢失已下载的 ollama 模型）
   var PROVIDER_MODELS = (function(){
@@ -2252,6 +2256,7 @@
         // 重置思考过程面板
         state.reasoningText = '';
         state.firstDeltaReceived = false;  // 重置首次 delta 标志，避免心跳覆盖流式输出
+        state.inThinking = false;  // 重置思考中标志，ModelReasoning 到达时再置 true
         if($reasoningBody) $reasoningBody.textContent = '';
         if($reasoningCnt) $reasoningCnt.textContent = '0 字';
         if($reasoningPanel) $reasoningPanel.style.display = 'none';
@@ -2282,6 +2287,11 @@
         if($reasoningCnt) $reasoningCnt.textContent = state.reasoningText.length + ' 字';
         // 自动滚动到底部
         if($reasoningBody) $reasoningBody.scrollTop = $reasoningBody.scrollHeight;
+        // 占位符：思考期间在 resultText 显示提示，避免用户以为卡死（首个 ModelDelta 到达后清空）
+        if(!state.firstDeltaReceived && !state.inThinking){
+          state.inThinking = true;
+          $resultText.textContent = '（💭 模型正在思考，详见思考过程面板…）';
+        }
         // 顶部摘要更新
         var rMs = modelStartTime ? (Date.now() - modelStartTime) : 0;
         $logSummary.innerHTML = '思考中 · 已 <b>' + state.reasoningText.length + '</b> 字 · <b>' + rMs + '</b>ms';
@@ -2292,6 +2302,7 @@
         if(!state.firstDeltaReceived){
           $resultText.textContent = '';
           state.firstDeltaReceived = true;
+          state.inThinking = false;  // 收到首个 delta，思考结束
         }
         $resultText.textContent += (event.delta || '');
         // 更新顶部"模型输出中 · 已 N 字 · Mms"计数

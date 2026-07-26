@@ -10,7 +10,7 @@ use std::time::Duration;
 /// Qwen3 thinking 标签解析状态机
 /// 处理流式到达的 content，分离开标签和闭标签之间的思考链
 /// 支持跨 chunk 边界的标签（如 `<th` + `ink>`）
-struct ThinkingParser {
+pub struct ThinkingParser {
     /// 当前是否在思考链内
     in_thinking: bool,
     /// 缓冲区：用于处理跨 chunk 的标签
@@ -24,7 +24,7 @@ struct ThinkingParser {
 }
 
 impl ThinkingParser {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             in_thinking: false,
             buf: String::new(),
@@ -38,7 +38,8 @@ impl ThinkingParser {
     /// 算法：维护一个 buf，扫描开标签和闭标签
     /// 标签之前/之外的内容加入 output_buf 或 reasoning_buf（视当前状态）
     /// 标签本身不输出，只切换状态
-    fn feed(&mut self, content: &str) {
+    /// 当标签跨 chunk 时，保留 buf 中可能是标签前缀的尾部，其余全部输出
+    pub fn feed(&mut self, content: &str) {
         self.buf.push_str(content);
         loop {
             if self.in_thinking {
@@ -53,11 +54,10 @@ impl ThinkingParser {
                     // 继续循环处理剩余
                 } else {
                     // 没找到闭标签，可能标签跨 chunk
-                    // 保留末尾 7 字符（闭标签前缀长度）以防被截断
-                    if self.buf.len() > 7 {
-                        let safe_end = self.buf.len() - 7;
-                        let safe = self.buf[..safe_end].to_string();
-                        self.reasoning_buf.push_str(&safe);
+                    // 保留 buf 末尾"可能是标签前缀"的部分，其余全部加入 reasoning_buf
+                    let safe_end = safe_emit_len(&self.buf, close_tag);
+                    if safe_end > 0 {
+                        self.reasoning_buf.push_str(&self.buf[..safe_end]);
                         self.buf.drain(..safe_end);
                     }
                     break;
@@ -75,12 +75,11 @@ impl ThinkingParser {
                     // 继续循环处理剩余
                 } else {
                     // 没找到开标签，可能标签跨 chunk
-                    // 保留末尾 6 字符（开标签前缀长度）以防被截断
-                    if self.buf.len() > 6 {
-                        let safe_end = self.buf.len() - 6;
-                        let safe = self.buf[..safe_end].to_string();
-                        self.output_buf.push_str(&safe);
-                        self.output_full.push_str(&safe);
+                    // 保留 buf 末尾"可能是标签前缀"的部分，其余全部加入 output_buf
+                    let safe_end = safe_emit_len(&self.buf, open_tag);
+                    if safe_end > 0 {
+                        self.output_buf.push_str(&self.buf[..safe_end]);
+                        self.output_full.push_str(&self.buf[..safe_end]);
                         self.buf.drain(..safe_end);
                     }
                     break;
@@ -90,17 +89,17 @@ impl ThinkingParser {
     }
 
     /// 取出累积的实际输出增量
-    fn take_output(&mut self) -> String {
+    pub fn take_output(&mut self) -> String {
         std::mem::take(&mut self.output_buf)
     }
 
     /// 取出累积的思考链增量
-    fn take_reasoning(&mut self) -> String {
+    pub fn take_reasoning(&mut self) -> String {
         std::mem::take(&mut self.reasoning_buf)
     }
 
     /// 流结束时把 buf 残余内容按当前状态刷出
-    fn flush(&mut self) {
+    pub fn flush(&mut self) {
         if self.in_thinking {
             // thinking 未闭合，把残余当思考链
             self.reasoning_buf.push_str(&self.buf);
@@ -110,6 +109,20 @@ impl ThinkingParser {
         }
         self.buf.clear();
     }
+}
+
+/// 计算 buf 中可以安全输出的最大前缀长度（char boundary 对齐）
+/// 算法：找到最小的 split_point（必须是 char boundary），使得 buf[split_point..]
+///      是 tag 的非空前缀；若不存在这样的 split_point，返回 buf.len()（全部输出）
+/// 这样保证保留最长的"可能是标签开头"的后缀，其余立即输出，避免视觉卡顿
+fn safe_emit_len(buf: &str, tag: &str) -> usize {
+    for (idx, _) in buf.char_indices() {
+        let suffix = &buf[idx..];
+        if !suffix.is_empty() && tag.starts_with(suffix) {
+            return idx;
+        }
+    }
+    buf.len()
 }
 
 #[derive(Serialize)]
