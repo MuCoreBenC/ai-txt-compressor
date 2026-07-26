@@ -10,6 +10,8 @@ compressor/target/
 .start.pids
 *.log
 *.pid
+# tracing-appender 滚动日志目录（aitxt.log.YYYY-MM-DD）
+logs/
 
 # TRAE IDE 工作区
 .trae/
