@@ -1491,8 +1491,8 @@
     $customConfigRow.style.display = isCustom ? 'flex' : 'none';
     // 自定义模式时 modelSel 禁用（用文本输入框）
     $modelSel.disabled = isCustom || !state.useModel;
-    // reasoning 提示：仅 deepseek 显示（V4 仅支持 high/max）
-    if($reasoningHint) $reasoningHint.style.display = (p === 'deepseek') ? 'inline' : 'none';
+    // reasoning 提示：根据 provider + model 显示对应兼容性提示
+    updateReasoningHintForModel(state.model, p);
     // 卸载按钮：仅 ollama provider 显示（释放显存/内存）
     if($btnUnloadModel){
       $btnUnloadModel.style.display = (p === 'ollama') ? 'inline-block' : 'none';
@@ -1506,6 +1506,46 @@
       if (!state.baseUrl) state.baseUrl = PROVIDER_BASE_URL.deepseek;
     }
   }
+  /// 根据当前 provider + model 名称显示推理强度兼容性提示
+  /// 用户不知道 qwen2/qwen3 有哪些推理强度，这里给出明确指引
+  function updateReasoningHintForModel(modelName, provider){
+    if(!$reasoningHint) return;
+    var hint = '';
+    var m = (modelName || '').toLowerCase();
+    if(provider === 'ollama'){
+      if(/qwen3/.test(m)){
+        hint = 'qwen3：默认开 thinking 标签（流式先思考再生成），reasoning_effort 字段不被官方支持会被忽略；选「不思考」可加快响应';
+      } else if(/qwen2\.5/.test(m)){
+        hint = 'qwen2.5：不支持 reasoning_effort 字段，建议选「不思考」；如需深度推理请换 qwen3 系列';
+      } else if(/qwen2\b/.test(m)){
+        hint = 'qwen2：不支持 reasoning_effort 字段，建议选「不思考」';
+      } else if(/llama3\.?/.test(m)){
+        hint = 'llama3：不支持 reasoning_effort 字段，建议选「不思考」';
+      } else if(/deepseek-r1/.test(m)){
+        hint = 'DeepSeek R1（Ollama 版）：自带 reasoning，建议选「不思考」（reasoning_effort 不被支持）';
+      } else {
+        hint = '';  // 未知模型不显示
+      }
+    } else if(provider === 'deepseek'){
+      if(/deepseek-reasoner|deepseek-r1/.test(m)){
+        hint = 'DeepSeek Reasoner：自带深度推理，建议选 high 或 max';
+      } else {
+        hint = 'DeepSeek V4：仅支持 high/max/none（low/medium 会被忽略）';
+      }
+    } else if(provider === 'custom'){
+      if(/o1\b|o3\b|o1-|o3-/.test(m)){
+        hint = 'OpenAI o 系列：支持 low/medium/high（minimax 不支持）';
+      } else if(/qwen3/.test(m)){
+        hint = 'qwen3：thinking 标签机制，reasoning_effort 字段不被官方支持';
+      } else if(/qwen2/.test(m)){
+        hint = 'qwen2 系列：不支持 reasoning_effort 字段，建议选「不思考」';
+      } else {
+        hint = '自定义 API：reasoning_effort 是否生效取决于厂商';
+      }
+    }
+    $reasoningHint.textContent = hint;
+    $reasoningHint.style.display = hint ? 'inline' : 'none';
+  }
   $providerSel.addEventListener("change",function(){
     state.provider=$providerSel.value;
     localStorage.setItem("aitxt.provider", state.provider);
@@ -1516,6 +1556,7 @@
   $modelSel.addEventListener("change",function(){
     state.model=$modelSel.value;
     localStorage.setItem("aitxt.model", state.model);
+    updateReasoningHintForModel(state.model, state.provider);
   });
   // 自定义配置输入框联动
   $customBaseUrl.addEventListener("input",function(){
@@ -1525,6 +1566,7 @@
   $customModel.addEventListener("input",function(){
     state.model=$customModel.value.trim();
     localStorage.setItem("aitxt.model", state.model);
+    updateReasoningHintForModel(state.model, state.provider);
   });
   // API Key 密码框
   $apiKeyInput.addEventListener("input",function(){
