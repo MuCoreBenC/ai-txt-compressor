@@ -9,6 +9,7 @@ pub mod logger;
 pub mod model;
 pub mod pipeline;
 pub mod prompt;
+pub mod scoring;
 pub mod server;
 
 pub use clap::Parser;

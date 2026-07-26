@@ -49,6 +49,37 @@ pub struct CompressResult {
     pub stages: Stages,
     /// 完整运行日志（供前端展示）
     pub log: RunLog,
+    /// 方法显示名（如 "Qwen3:1.7b 66%" 或 "规则压缩"），供实验记录展示
+    pub method_name: String,
+    /// 启用模型时为 Some(provider)，算法模式为 None
+    pub provider: Option<String>,
+    /// 启用模型时为 Some(model)，算法模式为 None
+    pub model: Option<String>,
+    /// 实际使用的 system prompt（截断到 500 字）；算法模式或模型未调用时为 None
+    pub prompt_used: Option<String>,
+    /// 关键参数快照（供实验记录写入）
+    pub params_snapshot: ParamsSnapshot,
+}
+
+/// 关键参数快照（写入实验记录的 Method.params）
+/// 字段按 camelCase 序列化以对齐前端 JS Method.params 结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParamsSnapshot {
+    pub target_chars: usize,
+    pub ratio: Option<f64>,
+    pub reasoning_effort: Option<String>,
+    pub first_chunk_enabled: bool,
+    pub first_chunk_size: usize,
+}
+
+/// 把 prompt 截断到 max_chars 字符（按 char 切，避免切断多字节字符）
+fn truncate_prompt(s: &str, max_chars: usize) -> String {
+    if s.chars().count() > max_chars {
+        s.chars().take(max_chars).collect()
+    } else {
+        s.to_string()
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -276,6 +307,17 @@ pub async fn compress(text: &str, opts: &CompressOptions) -> anyhow::Result<Comp
                 fallback_triggered: false,
                 fallback_reason: None,
             },
+            method_name: "规则压缩".to_string(),
+            provider: None,
+            model: None,
+            prompt_used: None,
+            params_snapshot: ParamsSnapshot {
+                target_chars: 0,
+                ratio: None,
+                reasoning_effort: None,
+                first_chunk_enabled: false,
+                first_chunk_size: 0,
+            },
         });
     }
 
@@ -357,6 +399,10 @@ pub async fn compress(text: &str, opts: &CompressOptions) -> anyhow::Result<Comp
         && after_algo > target_chars
         && after_algo > 30;
 
+    // 捕获实际使用的 system prompt（截断到 500 字），供 CompressResult.prompt_used 写入实验记录
+    // 仅在模型实际被调用时设为 Some；模型未调用（no_model 或被跳过）时保持 None
+    let mut system_prompt_used: Option<String> = None;
+
     let (final_text, after_model) = if !should_run_model {
         if opts.no_model {
             entries.push(LogEntry {
@@ -393,6 +439,8 @@ pub async fn compress(text: &str, opts: &CompressOptions) -> anyhow::Result<Comp
             custom_user_template: opts.custom_user_template.as_deref(),
         };
         let (system, user) = crate::prompt::build_compress_messages_with(prompt_params);
+        // 模型实际被调用，捕获 system prompt 供实验记录使用
+        system_prompt_used = Some(truncate_prompt(&system, 500));
         let reasoning = opts.reasoning_effort.as_deref().filter(|s| !s.is_empty());
 
         entries.push(LogEntry {
@@ -592,6 +640,18 @@ pub async fn compress(text: &str, opts: &CompressOptions) -> anyhow::Result<Comp
         ),
     });
 
+    // 实验记录元数据：算法模式填默认值，模型模式填实际 provider/model/prompt
+    // method_name 用于实验记录展示：算法模式 = "规则压缩"，模型模式 = "{model} {ratio}%"
+    let (method_name, provider_field, model_field) = if opts.no_model {
+        ("规则压缩".to_string(), None, None)
+    } else {
+        (
+            format!("{} {}%", opts.model, (opts.ratio * 100.0) as u32),
+            Some(opts.provider.clone()),
+            Some(opts.model.clone()),
+        )
+    };
+
     Ok(CompressResult {
         original: original_chars,
         compressed: after_model,
@@ -617,6 +677,17 @@ pub async fn compress(text: &str, opts: &CompressOptions) -> anyhow::Result<Comp
             model_call,
             fallback_triggered,
             fallback_reason,
+        },
+        method_name,
+        provider: provider_field,
+        model: model_field,
+        prompt_used: system_prompt_used,
+        params_snapshot: ParamsSnapshot {
+            target_chars,
+            ratio: Some(opts.ratio as f64),
+            reasoning_effort: opts.reasoning_effort.clone(),
+            first_chunk_enabled: false,
+            first_chunk_size: 0,
         },
     })
 }
@@ -695,6 +766,17 @@ pub async fn compress_stream(
                 model_call: None,
                 fallback_triggered: false,
                 fallback_reason: None,
+            },
+            method_name: "规则压缩".to_string(),
+            provider: None,
+            model: None,
+            prompt_used: None,
+            params_snapshot: ParamsSnapshot {
+                target_chars: 0,
+                ratio: None,
+                reasoning_effort: None,
+                first_chunk_enabled: false,
+                first_chunk_size: 0,
             },
         });
     }
@@ -819,6 +901,10 @@ pub async fn compress_stream(
     // === Stage 2: 模型压缩（可选） ===
     let should_run_model = !opts.no_model && after_algo > target_chars && after_algo > 30;
 
+    // 捕获实际使用的 system prompt（截断到 500 字），供 CompressResult.prompt_used 写入实验记录
+    // 仅在模型实际被调用时设为 Some；模型未调用（no_model 或被跳过）时保持 None
+    let mut system_prompt_used: Option<String> = None;
+
     let (final_text, after_model) = if !should_run_model {
         if opts.no_model {
             entries.push(LogEntry {
@@ -857,6 +943,8 @@ pub async fn compress_stream(
             opts.custom_system.as_deref(),
             opts.custom_user_template.as_deref(),
         );
+        // 模型实际被调用，捕获 system prompt 供实验记录使用
+        system_prompt_used = Some(truncate_prompt(&system, 500));
         let reasoning = opts.reasoning_effort.as_deref().filter(|s| !s.is_empty());
 
         entries.push(LogEntry {
@@ -1260,6 +1348,18 @@ pub async fn compress_stream(
         })
         .await;
 
+    // 实验记录元数据：算法模式填默认值，模型模式填实际 provider/model/prompt
+    // method_name 用于实验记录展示：算法模式 = "规则压缩"，模型模式 = "{model} {ratio}%"
+    let (method_name, provider_field, model_field) = if opts.no_model {
+        ("规则压缩".to_string(), None, None)
+    } else {
+        (
+            format!("{} {}%", opts.model, (opts.ratio * 100.0) as u32),
+            Some(opts.provider.clone()),
+            Some(opts.model.clone()),
+        )
+    };
+
     Ok(CompressResult {
         original: original_chars,
         compressed: after_model,
@@ -1285,6 +1385,17 @@ pub async fn compress_stream(
             model_call,
             fallback_triggered,
             fallback_reason,
+        },
+        method_name,
+        provider: provider_field,
+        model: model_field,
+        prompt_used: system_prompt_used,
+        params_snapshot: ParamsSnapshot {
+            target_chars,
+            ratio: Some(opts.ratio as f64),
+            reasoning_effort: opts.reasoning_effort.clone(),
+            first_chunk_enabled: false,
+            first_chunk_size: 0,
         },
     })
 }

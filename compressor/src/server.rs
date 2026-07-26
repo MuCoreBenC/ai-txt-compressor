@@ -27,6 +27,7 @@ use tower_http::cors::{Any, CorsLayer};
 use crate::model::ollama::OllamaClient;
 use crate::pipeline::{compress, compress_stream, CompressOptions, StreamEvent};
 use crate::prompt::PresetPrompt;
+use crate::scoring::{compute_score, ScoreRequest};
 
 /// 编译时嵌入前端页面，生成真正的单文件二进制
 static INDEX_HTML: &str = include_str!("../../compress.html");
@@ -135,8 +136,10 @@ pub async fn run(args: crate::Cli) -> anyhow::Result<()> {
         .route("/ollama/pull", post(ollama_pull_handler))
         .route("/ollama/tags", get(ollama_tags_handler))
         .route("/ollama/unload", post(ollama_unload_handler))
+        .route("/ollama/embed", post(ollama_embed_handler))
         .route("/cancel", post(cancel_handler))
         .route("/shutdown", post(shutdown_handler))
+        .route("/score", post(score_handler))
         .layer(cors)
         .with_state(state);
 
@@ -676,4 +679,75 @@ async fn ollama_unload_handler(
                 .into_response()
         }
     }
+}
+
+// ==================== 评分 ====================
+
+/// POST /score：对压缩结果进行多维度评分
+///
+/// 返回 ScoreReport（compressionRatio / semanticScore / informationLoss /
+/// factRetention / totalScore）。语义相似度为可选维度，未提供 embedding_model
+/// 或 ollama_base 时为 null，总分按剩余三维归一化。
+async fn score_handler(Json(req): Json<ScoreRequest>) -> Json<crate::scoring::ScoreReport> {
+    let report = compute_score(req).await;
+    Json(report)
+}
+
+// ==================== Ollama Embedding 透传 ====================
+
+#[derive(Deserialize)]
+struct EmbedRequest {
+    model: String,
+    prompt: String,
+    /// 可选，默认 http://localhost:11434
+    #[serde(default)]
+    ollama_base: Option<String>,
+}
+
+#[derive(Serialize)]
+struct OllamaEmbedRequest<'a> {
+    model: &'a str,
+    prompt: &'a str,
+}
+
+/// POST /ollama/embed：透传到 Ollama /api/embeddings，返回原始 JSON
+///
+/// 前端评分时用此接口获取原文/压缩文的 embedding 向量（前端自行算余弦相似度，
+/// 或交给后端 /score 处理）。ollama_base 缺省时走本机 11434。
+async fn ollama_embed_handler(
+    Json(req): Json<EmbedRequest>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let base = req
+        .ollama_base
+        .clone()
+        .unwrap_or_else(|| "http://localhost:11434".to_string());
+    let url = format!("{}/api/embeddings", base.trim_end_matches('/'));
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let ollama_req = OllamaEmbedRequest {
+        model: &req.model,
+        prompt: &req.prompt,
+    };
+
+    let resp = client
+        .post(&url)
+        .json(&ollama_req)
+        .send()
+        .await
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+    if !resp.status().is_success() {
+        return Err(StatusCode::BAD_GATEWAY);
+    }
+
+    let value: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+    Ok(Json(value))
 }

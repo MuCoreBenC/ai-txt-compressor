@@ -689,6 +689,392 @@
   /* ===== Task 9: result warn bar (字数不达标) ===== */
   .result-warn{margin:8px 0 0;padding:8px 12px;background:rgba(255,200,87,.08);border:1px solid var(--accent-2);border-radius:3px;display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--accent-2);font-size:12px;letter-spacing:.06em}
   .result-warn.show{display:flex}
+
+  /* === Task 11: 历史记录抽屉 === */
+  .history-toggle{
+    position:fixed;right:0;top:50%;
+    transform:translateY(-50%);
+    z-index:1500;
+    writing-mode:vertical-rl;
+    text-orientation:upright;
+    background:var(--accent);
+    color:#0a0c0d;
+    border:none;
+    border-radius:8px 0 0 8px;
+    padding:16px 8px;
+    cursor:pointer;
+    font-size:14px;
+    letter-spacing:2px;
+    font-family:var(--mono);
+    box-shadow:-2px 0 8px rgba(0,0,0,0.35);
+    transition:padding .2s;
+  }
+  .history-toggle:hover{padding-right:12px}
+  .history-drawer{
+    position:fixed;right:0;top:0;bottom:0;
+    width:380px;max-width:90vw;
+    background:var(--bg-2);
+    color:var(--text);
+    box-shadow:-4px 0 16px rgba(0,0,0,0.45);
+    transform:translateX(100%);
+    transition:transform .25s ease;
+    z-index:1600;
+    display:flex;flex-direction:column;
+    font-size:13px;
+    border-left:1px solid var(--border);
+  }
+  .history-drawer.open{transform:translateX(0)}
+  .drawer-header{
+    display:flex;align-items:center;gap:8px;
+    padding:12px 16px;
+    border-bottom:1px solid var(--border);
+    background:var(--surface);
+  }
+  .drawer-title{font-weight:600;font-size:14px;letter-spacing:.06em}
+  .drawer-count{
+    background:var(--accent);
+    color:#0a0c0d;
+    border-radius:10px;
+    padding:1px 8px;
+    font-size:11px;
+    font-weight:600;
+  }
+  .drawer-close{
+    margin-left:auto;
+    background:none;border:none;
+    color:var(--muted);
+    font-size:22px;cursor:pointer;
+    line-height:1;
+  }
+  .drawer-close:hover{color:var(--text)}
+  .drawer-list{
+    flex:1;overflow-y:auto;
+    padding:8px 0;
+  }
+  .drawer-list:empty::before{
+    content:"暂无实验记录 · 执行一次压缩即可记录";
+    display:block;
+    padding:40px 20px;
+    text-align:center;
+    color:var(--muted);
+    font-size:12px;
+  }
+  .drawer-preview{
+    border-top:1px solid var(--border);
+    padding:12px 16px;
+    max-height:50%;
+    overflow-y:auto;
+    background:var(--surface);
+  }
+  .drawer-footer{
+    padding:10px 16px;
+    border-top:1px solid var(--border);
+    background:var(--surface);
+  }
+  .drawer-clear-btn{
+    width:100%;
+    padding:8px;
+    background:transparent;
+    color:var(--danger);
+    border:1px solid var(--danger);
+    border-radius:6px;
+    cursor:pointer;
+    font-size:12px;
+    font-family:var(--mono);
+    letter-spacing:.06em;
+  }
+  .drawer-clear-btn:hover{background:var(--danger);color:#fff}
+
+  /* === Task 19: 历史记录设置卡片 === */
+  .cfg-group{
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:12px 14px;
+    margin-top:10px;
+    background:var(--surface);
+  }
+  .cfg-group > .cfg-group-title{
+    display:flex;align-items:center;gap:6px;
+    font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:10px;
+  }
+  .cfg-row{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    margin-bottom:8px;
+  }
+  .cfg-row:last-child{margin-bottom:0}
+  .cfg-label{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:13px;color:var(--text);
+  }
+  .cfg-label > input[type="number"],
+  .cfg-label > input[type="text"]{
+    background:var(--bg-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:3px;
+    padding:4px 6px;
+    font-family:var(--mono);
+    font-size:12px;
+  }
+
+  /* === Task 12/13: 抽屉列表 + Method 预览 + 卡片切分 === */
+  .record-item{
+    padding:10px 16px;
+    border-bottom:1px solid var(--border);
+  }
+  .record-title{
+    font-size:13px;
+    color:var(--text);
+    word-break:break-all;
+  }
+  .record-meta{
+    font-size:11px;
+    color:var(--muted);
+    display:block;
+    margin-top:2px;
+  }
+  .method-list{
+    margin-top:6px;
+    padding-left:16px;
+  }
+  .method-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 8px;
+    cursor:pointer;
+    border-radius:4px;
+    font-size:12px;
+  }
+  .method-item:hover{ background:var(--surface); }
+  .method-icon{ font-size:14px; }
+  .method-name{ flex:1; color:var(--text); }
+  .method-ratio{ color:var(--muted); font-size:11px; }
+  .method-score{ font-weight:600; min-width:30px; text-align:right; }
+
+  .preview-header{
+    display:flex; align-items:center; gap:8px;
+    margin-bottom:8px;
+  }
+  .preview-title{ flex:1; font-weight:600; font-size:13px; }
+  .preview-close{
+    background:none; border:1px solid var(--border);
+    color:var(--muted); padding:2px 8px;
+    border-radius:4px; cursor:pointer; font-size:11px;
+  }
+  .preview-close:hover{ color:var(--text); }
+
+  .preview-metrics{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:6px;
+    margin-bottom:10px;
+  }
+  .metric-card{
+    background:var(--surface);
+    padding:6px 4px;
+    border-radius:4px;
+    text-align:center;
+  }
+  .metric-label{ font-size:10px; color:var(--muted); }
+  .metric-value{ font-size:14px; font-weight:600; margin-top:2px; }
+
+  .preview-actions{
+    display:flex; align-items:center; gap:8px;
+    margin-bottom:8px;
+  }
+  .preview-split-btn, .preview-exit-split{
+    background:var(--accent); color:#0a0c0d;
+    border:none; padding:4px 10px;
+    border-radius:4px; cursor:pointer; font-size:11px;
+    font-family:var(--mono);
+  }
+  .preview-split-btn:hover, .preview-exit-split:hover{ opacity:.85; }
+  .preview-score{ margin-left:auto; font-weight:700; font-size:13px; }
+  .preview-meta{ color:var(--muted); font-size:11px; }
+
+  .preview-text{
+    background:var(--bg-2);
+    padding:8px;
+    border-radius:4px;
+    font-size:12px;
+    white-space:pre-wrap;
+    word-break:break-all;
+    max-height:200px;
+    overflow-y:auto;
+    margin:0;
+    color:var(--text);
+    border:1px solid var(--border-soft);
+  }
+
+  .card-list{ display:flex; flex-direction:column; gap:8px; }
+  .card-item{
+    background:var(--bg-2);
+    border-radius:4px;
+    overflow:hidden;
+    border:1px solid var(--border-soft);
+  }
+  .card-head{
+    padding:4px 8px;
+    background:var(--surface);
+    font-size:11px;
+    color:var(--muted);
+    border-bottom:1px solid var(--border);
+  }
+  .card-body{
+    padding:8px;
+    font-size:12px;
+    white-space:pre-wrap;
+    word-break:break-all;
+    color:var(--text);
+  }
+
+  /* ===== Task 15-18: 评分面板 ===== */
+  .score-panel{
+    padding:12px;
+    background:var(--bg, #1e1e1e);
+    border-radius:6px;
+    margin-top:8px;
+  }
+  .score-panel-header{
+    display:flex; align-items:center; gap:12px;
+    margin-bottom:12px;
+    padding-bottom:8px;
+    border-bottom:1px solid var(--border, #333);
+  }
+  .score-method-name{ font-size:14px; font-weight:600; color:var(--text, #e0e0e0); }
+  .score-total{ font-size:20px; font-weight:700; margin-left:auto; }
+  .score-cards{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .score-card{
+    background:var(--surface, #252525);
+    border-radius:6px;
+    padding:10px 8px;
+    text-align:center;
+  }
+  .score-card.muted{ opacity:0.5; }
+  .score-card-label{ font-size:11px; color:var(--muted, #888); }
+  .score-card-value{ font-size:18px; font-weight:600; margin:4px 0; color:var(--text, #e0e0e0); }
+  .score-card-sub{ font-size:11px; color:var(--muted, #888); }
+  .score-card-bar{
+    height:4px;
+    background:var(--bg-2, #1a1a1a);
+    border-radius:2px;
+    overflow:hidden;
+    margin-top:4px;
+  }
+  .score-card-bar-fill{
+    height:100%;
+    background:var(--accent, #4a90e2);
+    transition:width 0.3s;
+  }
+  .score-detail-btn{
+    background:transparent;
+    border:1px solid var(--accent, #4a90e2);
+    color:var(--accent, #4a90e2);
+    padding:2px 6px;
+    border-radius:3px;
+    font-size:10px;
+    cursor:pointer;
+  }
+  .score-detail-btn:hover{ background:var(--accent, #4a90e2); color:#fff; }
+  .score-empty{ color:var(--muted, #888); text-align:center; padding:20px; }
+
+  .detail-section{ margin-top:8px; }
+  .detail-header{
+    font-size:13px;
+    font-weight:600;
+    padding:6px 0;
+    display:flex;
+    align-items:center;
+    border-bottom:1px solid var(--border, #333);
+  }
+  .detail-collapse{
+    margin-left:auto;
+    background:none;
+    border:none;
+    color:var(--muted, #888);
+    font-size:18px;
+    cursor:pointer;
+  }
+  .detail-list{ padding-top:6px; }
+  .detail-item{
+    padding:8px;
+    margin-bottom:6px;
+    background:var(--surface, #252525);
+    border-radius:4px;
+    border-left:3px solid var(--danger, #e74c3c);
+  }
+  .lost-sentence .detail-item-text{
+    background:rgba(231, 76, 60, 0.15);
+    padding:4px 6px;
+    border-radius:3px;
+    color:var(--text, #e0e0e0);
+    font-size:12px;
+    word-break:break-all;
+  }
+  .detail-item-meta{
+    font-size:11px;
+    color:var(--muted, #888);
+    margin:4px 0;
+  }
+  .detail-locate-btn{
+    background:transparent;
+    border:1px solid var(--border, #444);
+    color:var(--text, #e0e0e0);
+    padding:2px 8px;
+    border-radius:3px;
+    font-size:11px;
+    cursor:pointer;
+  }
+  .detail-locate-btn:hover{ border-color:var(--accent, #4a90e2); color:var(--accent, #4a90e2); }
+  .locate-highlight{
+    outline:2px solid var(--accent, #4a90e2);
+    outline-offset:2px;
+    transition:outline 0.2s;
+  }
+  .detail-empty{ color:var(--muted, #888); padding:12px; text-align:center; }
+
+  .fact-group{ margin-bottom:10px; }
+  .fact-group-label{
+    font-size:12px;
+    font-weight:600;
+    color:var(--muted, #888);
+    margin-bottom:4px;
+    border-bottom:1px dashed var(--border, #333);
+    padding-bottom:2px;
+  }
+  .fact-group-items{ display:flex; flex-direction:column; gap:4px; }
+  .fact-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:4px 6px;
+    background:var(--surface, #252525);
+    border-radius:3px;
+    font-size:11px;
+  }
+  .fact-value{
+    font-family:monospace;
+    color:var(--text, #e0e0e0);
+    background:var(--bg-2, #1a1a1a);
+    padding:1px 4px;
+    border-radius:2px;
+  }
+  .fact-tag{
+    color:var(--accent, #4a90e2);
+    font-size:10px;
+    border:1px solid var(--accent, #4a90e2);
+    padding:0 4px;
+    border-radius:8px;
+  }
+  .fact-note{ color:var(--muted, #888); font-size:10px; margin-left:auto; }
 </style>
 </head>
 <body>
@@ -930,7 +1316,16 @@
             <button type="button" class="diff-tab" data-pair="raw-algo">原文→算法</button>
             <button type="button" class="diff-tab active" data-pair="raw-model">原文→模型</button>
             <button type="button" class="diff-tab" data-pair="algo-model">算法→模型</button>
+            <button type="button" class="diff-tab score-tab-btn" data-action="score">评分</button>
             <button type="button" class="diff-tab diff-tab-exit" id="btnDiffExit">退出 ✕</button>
+          </div>
+          <div id="scorePanel" class="score-panel" style="display:none;">
+            <div class="score-panel-header">
+              <span id="scoreMethodName" class="score-method-name"></span>
+              <span id="scoreTotal" class="score-total"></span>
+            </div>
+            <div class="score-cards" id="scoreCards"></div>
+            <div class="score-detail-section" id="scoreDetailSection"></div>
           </div>
           <div class="result-foot">
             <span style="font-size:11px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase" id="resultCnt">--</span>
@@ -995,6 +1390,29 @@
             <button type="button" class="btn-small" id="btnPromptClear">清空自定义</button>
             <span class="hint" id="promptHint">提示：留空使用后端默认；保存后每次压缩都会带上自定义提示词。</span>
           </div>
+        </div>
+      </div>
+
+      <!-- ===== Task 19: 历史记录设置 ===== -->
+      <div class="cfg-group">
+        <div class="cfg-group-title"><span class="tag">[05]</span> 历史记录 · HISTORY</div>
+        <div class="cfg-row">
+          <label class="cfg-label">
+            <input type="checkbox" id="optHistoryEnabled" checked>
+            <span>启用实验记录</span>
+          </label>
+        </div>
+        <div class="cfg-row">
+          <label class="cfg-label">最大记录数</label>
+          <input type="number" id="historyMax" min="10" max="500" value="100" style="width:80px">
+        </div>
+        <div class="cfg-row">
+          <label class="cfg-label">自动清理天数</label>
+          <input type="number" id="historyCleanupDays" min="1" max="365" value="30" style="width:80px">
+        </div>
+        <div class="cfg-row">
+          <label class="cfg-label">Embedding 模型</label>
+          <input type="text" id="embeddingModel" value="bge-m3" placeholder="bge-m3 / nomic-embed-text" style="width:180px">
         </div>
       </div>
 
@@ -1096,6 +1514,381 @@
     </div>
   </div>
 
+<!-- ===== Task 11: 历史记录抽屉 DOM（在主 script 之前，确保 getElementById 可用） ===== -->
+<button id="historyToggle" class="history-toggle" title="实验记录">历史</button>
+<aside id="historyDrawer" class="history-drawer">
+  <div class="drawer-header">
+    <span class="drawer-title">实验记录</span>
+    <span id="drawerCount" class="drawer-count">0</span>
+    <button id="drawerClose" class="drawer-close" title="关闭">×</button>
+  </div>
+  <div id="drawerList" class="drawer-list">
+    <!-- 记录列表渲染处（Task 12 填充） -->
+  </div>
+  <div id="drawerPreview" class="drawer-preview" style="display:none;">
+    <!-- Method 预览渲染处（Task 13 填充） -->
+  </div>
+  <div class="drawer-footer">
+    <button id="drawerClear" class="drawer-clear-btn">立即清理</button>
+  </div>
+</aside>
+
+<!-- ===== Task 9: aitxtHistory IndexedDB 模块（在主 script 之前，确保 window.aitxtHistory 可用） ===== -->
+<script>
+window.aitxtHistory = (function(){
+  var DB_NAME = 'aitxt_db';
+  var DB_VERSION = 1;
+  var STORE = 'compression_records';
+
+  function openDB(){
+    return new Promise(function(resolve, reject){
+      var req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = function(e){
+        var db = e.target.result;
+        if(!db.objectStoreNames.contains(STORE)){
+          var store = db.createObjectStore(STORE, {keyPath:'id'});
+          store.createIndex('sourceTextHash', 'sourceTextHash', {unique:false});
+          store.createIndex('updatedAt', 'updatedAt', {unique:false});
+        }
+      };
+      req.onsuccess = function(e){ resolve(e.target.result); };
+      req.onerror = function(e){ reject(e.target.error); };
+    });
+  }
+
+  function putRecord(record){
+    return openDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction(STORE, 'readwrite');
+        var store = tx.objectStore(STORE);
+        var idx = store.index('sourceTextHash');
+        var getReq = idx.get(record.sourceTextHash);
+        getReq.onsuccess = function(e){
+          var existing = e.target.result;
+          if(existing){
+            if(!Array.isArray(existing.methods)) existing.methods = [];
+            existing.methods.push.apply(existing.methods, record.methods || []);
+            existing.updatedAt = Date.now();
+            store.put(existing);
+          } else {
+            store.put(record);
+          }
+        };
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+
+  function getRecordByHash(hash){
+    return openDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction(STORE, 'readonly');
+        var idx = tx.objectStore(STORE).index('sourceTextHash');
+        var req = idx.get(hash);
+        req.onsuccess = function(e){ resolve(e.target.result); };
+        req.onerror = function(e){ reject(e.target.error); };
+      });
+    });
+  }
+
+  function getAllRecords(){
+    return openDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction(STORE, 'readonly');
+        var req = tx.objectStore(STORE).getAll();
+        req.onsuccess = function(e){ resolve(e.target.result || []); };
+        req.onerror = function(e){ reject(e.target.error); };
+      });
+    });
+  }
+
+  function deleteRecord(id){
+    return openDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).delete(id);
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+
+  function clearAll(){
+    return openDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).clear();
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+
+  function countRecords(){
+    return openDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction(STORE, 'readonly');
+        var req = tx.objectStore(STORE).count();
+        req.onsuccess = function(e){ resolve(e.target.result); };
+        req.onerror = function(e){ reject(e.target.error); };
+      });
+    });
+  }
+
+  function cleanupOld(days){
+    var threshold = Date.now() - days * 86400000;
+    return getAllRecords().then(function(all){
+      var toDelete = (all || []).filter(function(r){ return r.updatedAt < threshold; });
+      return toDelete.reduce(function(chain, r){
+        return chain.then(function(){ return deleteRecord(r.id); });
+      }, Promise.resolve()).then(function(){ return toDelete.length; });
+    });
+  }
+
+  // 工具：UUID 生成
+  function uuid(){
+    if(crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+      var r = Math.random()*16|0;
+      return (c==='x' ? r : (r&0x3|0x8)).toString(16);
+    });
+  }
+
+  // 工具：SHA-256 取前 16 hex 字符（8 字节）作为 sourceTextHash
+  function sha256hex16(text){
+    if(crypto.subtle && crypto.subtle.digest){
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function(buf){
+        var arr = Array.from(new Uint8Array(buf));
+        return arr.slice(0, 8).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+      }).catch(function(){
+        return fallbackHash(text);
+      });
+    }
+    return Promise.resolve(fallbackHash(text));
+  }
+
+  function fallbackHash(text){
+    var h = 0;
+    for(var i=0; i<text.length; i++){
+      h = ((h<<5) - h) + text.charCodeAt(i);
+      h |= 0;
+    }
+    return ('00000000' + (h>>>0).toString(16)).slice(-8) + ('00000000' + (h>>>0).toString(16)).slice(-8);
+  }
+
+  return {
+    openDB: openDB,
+    putRecord: putRecord,
+    getRecordByHash: getRecordByHash,
+    getAllRecords: getAllRecords,
+    deleteRecord: deleteRecord,
+    clearAll: clearAll,
+    countRecords: countRecords,
+    cleanupOld: cleanupOld,
+    uuid: uuid,
+    sha256hex16: sha256hex16
+  };
+})();
+</script>
+
+<!-- ===== Task 12/13: aitxtDrawer 抽屉列表 + Method 预览（依赖 aitxtHistory + drawer DOM） ===== -->
+<script>
+window.aitxtDrawer = (function(){
+  var $drawer = document.getElementById('historyDrawer');
+  var $toggle = document.getElementById('historyToggle');
+  var $list = document.getElementById('drawerList');
+  var $count = document.getElementById('drawerCount');
+  var $close = document.getElementById('drawerClose');
+  var $clear = document.getElementById('drawerClear');
+  var $preview = document.getElementById('drawerPreview');
+
+  function escapeHtml(s){
+    if(s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function scoreColor(score){
+    if(score >= 80) return '#27ae60';
+    if(score >= 60) return '#f39c12';
+    return '#e74c3c';
+  }
+
+  function methodIcon(type){
+    return type === 'model' ? '🤖' : '⚙';
+  }
+
+  // 渲染列表
+  async function renderList(){
+    var records = await window.aitxtHistory.getAllRecords();
+    records.sort(function(a,b){ return b.updatedAt - a.updatedAt; });
+    if($count) $count.textContent = String(records.length);
+
+    if(records.length === 0){
+      $list.innerHTML = '';
+      return;
+    }
+
+    var html = '';
+    for(var i=0; i<records.length; i++){
+      var r = records[i];
+      var title = r.originalText.slice(0, 30) + (r.originalText.length > 30 ? '…' : '');
+      html += '<div class="record-item" data-record-id="'+escapeHtml(r.id)+'">';
+      html += '<div class="record-title">'+escapeHtml(title)+'</div>';
+      html += '<span class="record-meta">'+r.originalCharCount+' 字</span>';
+      html += '<div class="method-list">';
+      for(var j=0; j<r.methods.length; j++){
+        var m = r.methods[j];
+        var ratioPct = Math.round((m.metrics.compressionRatio || 0) * 100);
+        var totalScore = Math.round(m.metrics.totalScore || 0);
+        html += '<div class="method-item" data-record-id="'+escapeHtml(r.id)+'" data-method-id="'+escapeHtml(m.id)+'">';
+        html += '<span class="method-icon">'+methodIcon(m.methodType)+'</span>';
+        html += '<span class="method-name">'+escapeHtml(m.name)+'</span>';
+        html += '<span class="method-ratio">'+ratioPct+'%</span>';
+        html += '<span class="method-score" style="color:'+scoreColor(totalScore)+';">'+totalScore+'</span>';
+        html += '</div>';
+      }
+      html += '</div></div>';
+    }
+    $list.innerHTML = html;
+  }
+
+  // 点击 Method 预览
+  async function onMethodClick(recordId, methodId){
+    var all = await window.aitxtHistory.getAllRecords();
+    var record = null;
+    for(var i=0; i<all.length; i++){
+      if(all[i].id === recordId){ record = all[i]; break; }
+    }
+    if(!record) return;
+    var method = null;
+    for(var i=0; i<record.methods.length; i++){
+      if(record.methods[i].id === methodId){ method = record.methods[i]; break; }
+    }
+    if(!method) return;
+    renderPreview(method, record);
+  }
+
+  // Task 13: Method 预览区
+  function renderPreview(method, record){
+    var m = method.metrics || {};
+    var ratioPct = Math.round((m.compressionRatio || 0) * 100);
+    var semText = (m.semanticScore === null || m.semanticScore === undefined)
+      ? 'N/A' : (Math.round(m.semanticScore * 100) + '%');
+    var lossPct = Math.round(((m.informationLoss && m.informationLoss.lossRate) || 0) * 100);
+    var retainPct = Math.round(((m.factRetention && m.factRetention.retentionRate) || 0) * 100);
+    var totalScore = Math.round(m.totalScore || 0);
+
+    var html = '<div class="preview-header">';
+    html += '<span class="preview-title">'+escapeHtml(method.name)+'</span>';
+    html += '<button class="preview-close" id="previewCloseBtn">关闭预览</button>';
+    html += '</div>';
+    html += '<div class="preview-metrics">';
+    html += '<div class="metric-card"><div class="metric-label">压缩率</div><div class="metric-value">'+ratioPct+'%</div></div>';
+    html += '<div class="metric-card"><div class="metric-label">语义</div><div class="metric-value">'+semText+'</div></div>';
+    html += '<div class="metric-card"><div class="metric-label">丢失</div><div class="metric-value">'+lossPct+'%</div></div>';
+    html += '<div class="metric-card"><div class="metric-label">保留</div><div class="metric-value">'+retainPct+'%</div></div>';
+    html += '</div>';
+    html += '<div class="preview-actions">';
+    html += '<button class="preview-split-btn" id="previewSplitBtn">卡片切分</button>';
+    html += '<span class="preview-score" style="color:'+scoreColor(totalScore)+';">总分 '+totalScore+'</span>';
+    html += '</div>';
+    html += '<pre class="preview-text">'+escapeHtml(method.resultText)+'</pre>';
+
+    $preview.innerHTML = html;
+    $preview.style.display = 'block';
+
+    // 绑定按钮
+    var $closeBtn = document.getElementById('previewCloseBtn');
+    if($closeBtn){
+      $closeBtn.onclick = function(){
+        $preview.style.display = 'none';
+        $preview.innerHTML = '';
+      };
+    }
+    var $splitBtn = document.getElementById('previewSplitBtn');
+    if($splitBtn){
+      $splitBtn.onclick = function(){
+        var sizeStr = prompt('每张卡片字数：', '200');
+        if(!sizeStr) return;
+        var size = parseInt(sizeStr, 10);
+        if(!size || size < 10){ alert('字数必须 ≥ 10'); return; }
+        renderSplitCards(method.resultText, size);
+      };
+    }
+    // Task 15-18: 同步当前预览的 method 到 state.currentMethod，供评分面板展示
+    if(window.state){ window.state.currentMethod = method; }
+  }
+
+  // Task 13: 卡片切分（纯字符切片，不调算法）
+  function renderSplitCards(text, size){
+    var cards = [];
+    for(var i=0; i<text.length; i+=size){
+      cards.push(text.slice(i, i+size));
+    }
+    var html = '<div class="preview-header">';
+    html += '<span class="preview-title">卡片切分 · ' + cards.length + ' 张</span>';
+    html += '<button class="preview-close" id="previewCloseBtn">关闭预览</button>';
+    html += '</div>';
+    html += '<div class="preview-actions">';
+    html += '<button class="preview-exit-split" id="previewExitSplitBtn">退出切分</button>';
+    html += '<span class="preview-meta">每张 '+size+' 字</span>';
+    html += '</div>';
+    html += '<div class="card-list">';
+    for(var i=0; i<cards.length; i++){
+      html += '<div class="card-item">';
+      html += '<div class="card-head">卡片 '+(i+1)+'/'+cards.length+' · '+cards[i].length+' 字</div>';
+      html += '<div class="card-body">'+escapeHtml(cards[i])+'</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+    $preview.innerHTML = html;
+
+    var $closeBtn2 = document.getElementById('previewCloseBtn');
+    if($closeBtn2){
+      $closeBtn2.onclick = function(){
+        $preview.style.display = 'none';
+        $preview.innerHTML = '';
+      };
+    }
+    var $exitBtn = document.getElementById('previewExitSplitBtn');
+    if($exitBtn){
+      $exitBtn.onclick = function(){
+        // 退出切分：简化处理为关闭预览
+        $preview.style.display = 'none';
+        $preview.innerHTML = '';
+      };
+    }
+  }
+
+  // 列表点击委托
+  function bindListClick(){
+    if(!$list) return;
+    // 防止重复绑定
+    if($list.__aitxtBound) return;
+    $list.__aitxtBound = true;
+    $list.addEventListener('click', function(e){
+      var item = e.target.closest('.method-item');
+      if(!item) return;
+      var rid = item.getAttribute('data-record-id');
+      var mid = item.getAttribute('data-method-id');
+      if(rid && mid) onMethodClick(rid, mid);
+    });
+  }
+
+  // 初始化时立即绑定列表点击
+  bindListClick();
+
+  return {
+    renderList: renderList,
+    bindListClick: bindListClick,
+    onMethodClick: onMethodClick
+  };
+})();
+</script>
+
 <script>
 (function(){
   "use strict";
@@ -1126,6 +1919,12 @@
   var $btnDiff=document.getElementById("btnDiff");
   var $diffView=document.getElementById("diffView");
   var $resultText=document.getElementById("resultText");
+  // Task 15-18: 评分面板 DOM 引用
+  var $scorePanel=document.getElementById("scorePanel");
+  var $scoreMethodName=document.getElementById("scoreMethodName");
+  var $scoreTotal=document.getElementById("scoreTotal");
+  var $scoreCards=document.getElementById("scoreCards");
+  var $scoreDetailSection=document.getElementById("scoreDetailSection");
   var $sizeHint=document.getElementById("sizeHint");
   var $optNL=document.getElementById("optNL");
   var $optWS=document.getElementById("optWS");
@@ -1144,6 +1943,10 @@
   var $presetSel=document.getElementById("presetSel");
   var $reasoningHint=document.getElementById("reasoningHint");
   var $deepConfig=document.getElementById("deepConfig");
+  var $optHistoryEnabled=document.getElementById("optHistoryEnabled");
+  var $historyMax=document.getElementById("historyMax");
+  var $historyCleanupDays=document.getElementById("historyCleanupDays");
+  var $embeddingModel=document.getElementById("embeddingModel");
   var $ratioGroup=document.getElementById("ratioGroup");
   var $ratioHint=document.getElementById("ratioHint");
   var $customRatio=document.getElementById("customRatio");
@@ -1303,7 +2106,16 @@
     inThinking: false,              // 是否处于思考中（用于显示"💭 模型正在思考"占位符）
     hbTimer: null,                  // 心跳客户端计时器（每秒更新 logSummary 秒数）
     lastHeartbeatPhase: null,       // 最近一次心跳 phase 文案（供计时器使用）
-    reasoningUserScrolled: false    // 用户是否手动滚动过思考面板（true 时暂停自动滚到底，滚回底部时恢复）
+    reasoningUserScrolled: false,    // 用户是否手动滚动过思考面板（true 时暂停自动滚到底，滚回底部时恢复）
+    // Task 19: 历史记录设置（默认启用，localStorage 显式存 "false" 才禁用）
+    historyEnabled: localStorage.getItem("aitxt.historyEnabled") !== "false",
+    historyMax: parseInt(localStorage.getItem("aitxt.historyMax")||"100",10),
+    historyCleanupDays: parseInt(localStorage.getItem("aitxt.historyCleanupDays")||"30",10),
+    embeddingModel: localStorage.getItem("aitxt.embeddingModel") || "bge-m3",
+    // Task 14: 历史抽屉开关状态（默认收起）
+    drawerOpen: false,
+    // Task 15-18: 评分面板当前展示的 method（recordCompression / 抽屉预览写入）
+    currentMethod: null
   };
   // 各 provider 对应的模型选项（启动时优先读 localStorage，刷新页面不丢失已下载的 ollama 模型）
   var PROVIDER_MODELS = (function(){
@@ -1661,6 +2473,34 @@
       var v=$reasoningCustom.value.trim();
       state.reasoningEffort=v || "high";
       localStorage.setItem("aitxt.reasoningEffortCustom", v);
+    });
+  }
+  // Task 19: 历史记录设置 - 事件绑定
+  if($optHistoryEnabled){
+    $optHistoryEnabled.addEventListener("change", function(){
+      state.historyEnabled = $optHistoryEnabled.checked;
+      localStorage.setItem("aitxt.historyEnabled", state.historyEnabled ? "true" : "false");
+    });
+  }
+  if($historyMax){
+    $historyMax.addEventListener("change", function(){
+      state.historyMax = Math.max(10, Math.min(500, parseInt($historyMax.value, 10) || 100));
+      $historyMax.value = state.historyMax;
+      localStorage.setItem("aitxt.historyMax", String(state.historyMax));
+    });
+  }
+  if($historyCleanupDays){
+    $historyCleanupDays.addEventListener("change", function(){
+      state.historyCleanupDays = Math.max(1, Math.min(365, parseInt($historyCleanupDays.value, 10) || 30));
+      $historyCleanupDays.value = state.historyCleanupDays;
+      localStorage.setItem("aitxt.historyCleanupDays", String(state.historyCleanupDays));
+    });
+  }
+  if($embeddingModel){
+    $embeddingModel.addEventListener("change", function(){
+      state.embeddingModel = $embeddingModel.value.trim() || "bge-m3";
+      $embeddingModel.value = state.embeddingModel;
+      localStorage.setItem("aitxt.embeddingModel", state.embeddingModel);
     });
   }
   // 预设提示词下拉：选中即存 localStorage，普通拆分和重试都会用当前选中
@@ -2677,6 +3517,135 @@
     };
   }
 
+  // ===== Task 12: 抽屉刷新包装（跨 IIFE 桥接，供主 IIFE 内调用） =====
+  function refreshDrawer(){
+    if(window.aitxtDrawer) window.aitxtDrawer.renderList();
+  }
+
+  // ===== Task 10: 压缩完成 → 评分 + 写入 IndexedDB 实验记录 =====
+  async function recordCompression(data){
+    if(!data || !state.rawText) return;
+
+    // 1. 判定最终结果文本：启用模型且有 provider 时用 data.text，否则用算法结果
+    var isModelMode = state.useModel && data.provider;
+    var resultText = isModelMode ? (data.text || '') : (data.textAlgo || data.text || '');
+    if(!resultText) return;
+
+    var originalText = state.rawText;
+    var originalChars = originalText.length;
+    var compressedChars = resultText.length;
+
+    // targetRatio：优先用 state.size / origChars，nosplit 模式回退 state.ratio
+    var targetRatio = null;
+    if(state.size > 0 && originalChars > 0){
+      targetRatio = state.size / originalChars;
+    } else if(state.ratio){
+      targetRatio = state.ratio;
+    }
+
+    // embedding_model + ollama_base：仅 ollama provider 且配置了 embedding 模型时传
+    var embeddingModel = state.embeddingModel || null;
+    var ollamaBase = null;
+    if(state.provider === 'ollama' && embeddingModel){
+      ollamaBase = state.baseURL || 'http://localhost:11434';
+    }
+
+    // 2. 调用 /score
+    var scoreResp;
+    try {
+      scoreResp = await fetch('/score', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          original: originalText,
+          compressed: resultText,
+          originalChars: originalChars,
+          compressedChars: compressedChars,
+          targetRatio: targetRatio,
+          embeddingModel: embeddingModel,
+          ollamaBase: ollamaBase
+        })
+      });
+    } catch(e) {
+      console.warn('[aitxtHistory] /score fetch failed:', e);
+      return;
+    }
+    if(!scoreResp.ok){
+      console.warn('[aitxtHistory] /score returned', scoreResp.status);
+      return;
+    }
+    var metrics = await scoreResp.json();
+
+    // 3. 构造 Method 对象
+    var methodName = data.methodName || (isModelMode ? (data.model || '模型') : '规则压缩');
+    var method = {
+      id: window.aitxtHistory.uuid(),
+      name: methodName,
+      methodType: isModelMode ? 'model' : 'algo',
+      provider: data.provider || null,
+      model: data.model || null,
+      promptUsed: data.promptUsed || null,
+      params: data.paramsSnapshot || {
+        targetChars: state.size || 0,
+        ratio: targetRatio,
+        reasoningEffort: state.reasoningEffort || null,
+        firstChunkEnabled: state.firstChunkEnabled || false,
+        firstChunkSize: state.firstChunkSize || 0
+      },
+      resultText: resultText,
+      resultCharCount: compressedChars,
+      createdAt: Date.now(),
+      metrics: metrics
+    };
+
+    // 4. 构造/更新 CompressionRecord
+    var hash = await window.aitxtHistory.sha256hex16(originalText);
+    var existing = await window.aitxtHistory.getRecordByHash(hash);
+    var record;
+    if(existing){
+      record = existing;
+      record.methods.push(method);
+      record.updatedAt = Date.now();
+    } else {
+      record = {
+        id: window.aitxtHistory.uuid(),
+        sourceTextHash: hash,
+        originalText: originalText,
+        originalCharCount: originalChars,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        methods: [method]
+      };
+    }
+
+    // 5. 写入 IndexedDB
+    await window.aitxtHistory.putRecord(record);
+    // Task 15-18: 记录当前 method 供评分面板展示
+    state.currentMethod = method;
+
+    // 6. 上限检查：超过 state.historyMax 时按 updatedAt 升序删除多余
+    var count = await window.aitxtHistory.countRecords();
+    if(count > state.historyMax){
+      var all = await window.aitxtHistory.getAllRecords();
+      all.sort(function(a,b){ return a.updatedAt - b.updatedAt; });
+      var toDelete = count - state.historyMax;
+      for(var i=0; i<toDelete; i++){
+        await window.aitxtHistory.deleteRecord(all[i].id);
+      }
+    }
+
+    // 7. 刷新抽屉（如果开着）
+    if(state.drawerOpen){
+      refreshDrawer();
+    }
+    // 同时更新计数
+    var $dc = document.getElementById('drawerCount');
+    if($dc){
+      var newCount = await window.aitxtHistory.countRecords();
+      $dc.textContent = String(newCount);
+    }
+  }
+
   // ===== render compress result =====
   function renderCompressResult(data){
     var orig=data.original||0;
@@ -2737,6 +3706,13 @@
       renderRunLog(data.log);
     }else{
       clearRunLog();
+    }
+
+    // Task 10: 触发实验记录写入（异步，不阻塞 UI）
+    if(window.aitxtHistory && state.historyEnabled){
+      recordCompression(data).catch(function(e){
+        console.warn('[aitxtHistory] recordCompression failed:', e);
+      });
     }
   }
 
@@ -3931,6 +4907,190 @@
       '</div>';
     $diffView.innerHTML=header+rows.join('');
   }
+
+  // ===== Task 16-18: 评分面板渲染 =====
+  function renderScorePanel(){
+    var m = state.currentMethod;
+    if(!m || !m.metrics){
+      $scoreMethodName.textContent = '无评分数据';
+      $scoreTotal.textContent = '';
+      $scoreCards.innerHTML = '<div class="score-empty">请先执行压缩或从历史记录选择一个方法</div>';
+      $scoreDetailSection.innerHTML = '';
+      return;
+    }
+    var metrics = m.metrics;
+    var totalScore = Math.round(metrics.totalScore);
+    var ratioPct = Math.round((metrics.compressionRatio || 0) * 100);
+    var semText = (metrics.semanticScore === null || metrics.semanticScore === undefined)
+      ? null : Math.round(metrics.semanticScore * 100);
+    var lossRate = (metrics.informationLoss && metrics.informationLoss.lossRate) || 0;
+    var lossPct = Math.round(lossRate * 100);
+    var retainRate = (metrics.factRetention && metrics.factRetention.retentionRate) || 0;
+    var retainPct = Math.round(retainRate * 100);
+
+    $scoreMethodName.textContent = m.name || '';
+    $scoreTotal.textContent = totalScore + ' 分';
+    $scoreTotal.style.color = scoreColorFor(totalScore);
+
+    var html = '';
+    // 压缩率
+    html += renderScoreCard('压缩率', ratioPct + '%',
+      (state.rawText ? state.rawText.length : 0) + ' → ' + (m.resultCharCount || 0) + ' 字');
+    // 语义保持度
+    if(semText === null){
+      html += renderScoreCard('语义保持度', 'N/A', '未配置 embedding 模型', true);
+    } else {
+      html += renderScoreCardWithBar('语义保持度', semText + '%', metrics.semanticScore);
+    }
+    // 信息丢失
+    var lostCount = (metrics.informationLoss && metrics.informationLoss.lostSentences) ? metrics.informationLoss.lostSentences.length : 0;
+    html += renderScoreCard('信息丢失', lossPct + '%',
+      lostCount > 0
+        ? '<button class="score-detail-btn" data-detail="lost-sentences">查看 ' + lostCount + ' 条丢失句</button>'
+        : '无丢失句');
+    // 事实保留
+    var lostFactsCount = (metrics.factRetention && metrics.factRetention.lostFacts) ? metrics.factRetention.lostFacts.length : 0;
+    html += renderScoreCard('事实保留', retainPct + '%',
+      lostFactsCount > 0
+        ? '<button class="score-detail-btn" data-detail="lost-facts">查看 ' + lostFactsCount + ' 条丢失实体</button>'
+        : '全部保留');
+
+    $scoreCards.innerHTML = html;
+    $scoreDetailSection.innerHTML = '';
+
+    // 绑定详情按钮
+    var btns = $scoreCards.querySelectorAll('.score-detail-btn');
+    for(var i=0; i<btns.length; i++){
+      btns[i].addEventListener('click', function(){
+        var detail = this.getAttribute('data-detail');
+        if(detail === 'lost-sentences') renderLostSentences(metrics);
+        else if(detail === 'lost-facts') renderLostFacts(metrics);
+      });
+    }
+  }
+
+  function scoreColorFor(score){
+    if(score >= 80) return '#27ae60';
+    if(score >= 60) return '#f39c12';
+    return '#e74c3c';
+  }
+
+  function renderScoreCard(label, value, sub, muted){
+    return '<div class="score-card' + (muted ? ' muted' : '') + '">' +
+      '<div class="score-card-label">' + label + '</div>' +
+      '<div class="score-card-value">' + value + '</div>' +
+      '<div class="score-card-sub">' + sub + '</div>' +
+      '</div>';
+  }
+
+  function renderScoreCardWithBar(label, valueText, ratio){
+    var pct = Math.round(ratio * 100);
+    return '<div class="score-card">' +
+      '<div class="score-card-label">' + label + '</div>' +
+      '<div class="score-card-value">' + valueText + '</div>' +
+      '<div class="score-card-bar"><div class="score-card-bar-fill" style="width:' + pct + '%"></div></div>' +
+      '</div>';
+  }
+
+  // ===== Task 17: 丢失句列表 + 定位原文 =====
+  function renderLostSentences(metrics){
+    var lost = (metrics.informationLoss && metrics.informationLoss.lostSentences) || [];
+    if(lost.length === 0){
+      $scoreDetailSection.innerHTML = '<div class="detail-empty">无丢失句</div>';
+      return;
+    }
+    var html = '<div class="detail-section">';
+    html += '<div class="detail-header">丢失句列表 · ' + lost.length + ' 条 <button class="detail-collapse" id="detailCollapseBtn">×</button></div>';
+    html += '<div class="detail-list">';
+    for(var i=0; i<lost.length; i++){
+      var s = lost[i];
+      html += '<div class="detail-item lost-sentence">';
+      html += '<div class="detail-item-text">' + escapeHtml(s) + '</div>';
+      html += '<div class="detail-item-meta">在压缩文本中未找到对应</div>';
+      html += '<button class="detail-locate-btn" data-sentence="' + encodeURIComponent(s) + '">定位原文</button>';
+      html += '</div>';
+    }
+    html += '</div></div>';
+    $scoreDetailSection.innerHTML = html;
+
+    var $collapseBtn = document.getElementById('detailCollapseBtn');
+    if($collapseBtn){
+      $collapseBtn.onclick = function(){ $scoreDetailSection.innerHTML = ''; };
+    }
+    var locateBtns = $scoreDetailSection.querySelectorAll('.detail-locate-btn');
+    for(var j=0; j<locateBtns.length; j++){
+      locateBtns[j].onclick = function(){
+        var sentence = decodeURIComponent(this.getAttribute('data-sentence'));
+        locateInOriginal(sentence);
+      };
+    }
+  }
+
+  function locateInOriginal(sentence){
+    // 原文 textarea id 为 src，引用 $src
+    var $orig = $src || document.getElementById('src');
+    if(!$orig){ return; }
+    var text = $orig.value || '';
+    var idx = text.indexOf(sentence);
+    if(idx < 0){
+      alert('未在原文中定位到该句');
+      return;
+    }
+    $orig.focus();
+    $orig.setSelectionRange(idx, idx + sentence.length);
+    $orig.scrollTop = $orig.scrollHeight * (idx / Math.max(1, text.length));
+    $orig.classList.add('locate-highlight');
+    setTimeout(function(){ $orig.classList.remove('locate-highlight'); }, 2000);
+  }
+
+  // ===== Task 18: 丢失实体列表 =====
+  function renderLostFacts(metrics){
+    var fr = metrics.factRetention || {};
+    var lost = fr.lostFacts || [];
+    var byType = fr.factsByType || {};
+    if(lost.length === 0){
+      $scoreDetailSection.innerHTML = '<div class="detail-empty">无丢失实体</div>';
+      return;
+    }
+    var typeLabels = {
+      number: '数字',
+      unit: '单位',
+      path: '路径',
+      version: '版本号',
+      errorCode: '错误码',
+      properNoun: '专有名词'
+    };
+    var typeOrder = ['number', 'unit', 'path', 'version', 'errorCode', 'properNoun'];
+
+    var html = '<div class="detail-section">';
+    html += '<div class="detail-header">丢失实体列表 · ' + lost.length + ' 条 <button class="detail-collapse" id="detailCollapseBtn">×</button></div>';
+    html += '<div class="detail-list">';
+    for(var t=0; t<typeOrder.length; t++){
+      var type = typeOrder[t];
+      var items = byType[type] || [];
+      var lostInType = items.filter(function(x){ return lost.indexOf(x) >= 0; });
+      if(lostInType.length === 0) continue;
+      html += '<div class="fact-group">';
+      html += '<div class="fact-group-label">' + (typeLabels[type] || type) + '</div>';
+      html += '<div class="fact-group-items">';
+      for(var i=0; i<lostInType.length; i++){
+        html += '<div class="fact-item">';
+        html += '<span class="fact-value">' + escapeHtml(lostInType[i]) + '</span>';
+        html += '<span class="fact-tag">' + (typeLabels[type] || type) + '</span>';
+        html += '<span class="fact-note">原文包含但压缩文本缺失</span>';
+        html += '</div>';
+      }
+      html += '</div></div>';
+    }
+    html += '</div></div>';
+    $scoreDetailSection.innerHTML = html;
+
+    var $collapseBtn2 = document.getElementById('detailCollapseBtn');
+    if($collapseBtn2){
+      $collapseBtn2.onclick = function(){ $scoreDetailSection.innerHTML = ''; };
+    }
+  }
+
   var $diffTabs=document.getElementById("diffTabs");
   var $btnDiffExit=document.getElementById("btnDiffExit");
   function setDiffPair(pair){
@@ -3945,13 +5105,32 @@
   $diffTabs.addEventListener("click",function(e){
     var btn=e.target.closest(".diff-tab:not(.diff-tab-exit)");
     if(!btn) return;
+    var action=btn.getAttribute("data-action");
+    if(action==="score"){
+      // Task 15.3: 评分标签分支
+      state.diffPair="score";
+      var tabs=$diffTabs.querySelectorAll(".diff-tab:not(.diff-tab-exit)");
+      for(var i=0;i<tabs.length;i++){
+        tabs[i].classList.toggle("active", tabs[i]===btn);
+      }
+      $diffView.style.display="none";
+      $scorePanel.style.display="block";
+      renderScorePanel();
+      return;
+    }
+    // 既有 Diff 标签逻辑：隐藏评分面板，显示 diff 视图
+    $scorePanel.style.display="none";
+    $diffView.style.display="block";
     setDiffPair(btn.getAttribute("data-pair"));
   });
   $btnDiffExit.addEventListener("click",function(){ toggleDiff(false); });
   function toggleDiff(on){
     state.diffOn=on;
     if(on){
+      // 若上一次停留在评分标签，重置回 raw-model
+      if(state.diffPair==="score") state.diffPair="raw-model";
       setDiffPair(state.diffPair);
+      $scorePanel.style.display="none";
       $diffView.style.display="block";
       $diffTabs.style.display="flex";
       $resultText.style.display="none";
@@ -3961,6 +5140,7 @@
       $diffView.style.display="none";
       $diffTabs.style.display="none";
       $diffView.innerHTML="";
+      $scorePanel.style.display="none";
       $resultText.style.display="block";
       $btnDiff.textContent="Diff 对比";
       $btnDiff.classList.remove("done");
@@ -3999,6 +5179,7 @@
     $diffView.style.display="none";
     $diffTabs.style.display="none";
     $diffView.innerHTML="";
+    $scorePanel.style.display="none";
     $resultText.style.display="block";
     $btnDiff.textContent="Diff 对比";
     $btnDiff.classList.remove("done");
@@ -4073,6 +5254,11 @@
   $reasoningSel.value = state.reasoningEffort || 'high';
   $customBaseUrl.value = state.baseUrl || '';
   $customModel.value = (state.provider === 'custom') ? (state.model || '') : '';
+  // Task 19: 历史记录设置 - 从 state 恢复到 UI
+  if($optHistoryEnabled) $optHistoryEnabled.checked = state.historyEnabled;
+  if($historyMax) $historyMax.value = state.historyMax;
+  if($historyCleanupDays) $historyCleanupDays.value = state.historyCleanupDays;
+  if($embeddingModel) $embeddingModel.value = state.embeddingModel;
   // 如果页面加载时深度压缩已勾选（不太可能，但兜底），启动健康检查
   if($optDeep.checked){ $deepConfig.classList.add("show"); startHealthPolling(); }
 
@@ -4080,7 +5266,58 @@
   initPromptPanel();
   // 启动时主动刷新一次本地 Ollama 模型列表（同步新下载的模型）
   refreshOllamaModels();
+
+  // ===== Task 14: 历史抽屉开/关 + 立即清理 + 自动清理 =====
+  var $historyToggle = document.getElementById('historyToggle');
+  var $historyDrawer = document.getElementById('historyDrawer');
+  var $drawerClose = document.getElementById('drawerClose');
+  var $drawerClear = document.getElementById('drawerClear');
+
+  if($historyToggle && $historyDrawer){
+    $historyToggle.addEventListener('click', function(){
+      state.drawerOpen = !state.drawerOpen;
+      $historyDrawer.classList.toggle('open', state.drawerOpen);
+      // Task 14.2: 首次展开时加载列表
+      if(state.drawerOpen && window.aitxtDrawer){
+        window.aitxtDrawer.renderList();
+      }
+    });
+  }
+  if($drawerClose && $historyDrawer){
+    $drawerClose.addEventListener('click', function(){
+      state.drawerOpen = false;
+      $historyDrawer.classList.remove('open');
+    });
+  }
+  if($drawerClear){
+    $drawerClear.addEventListener('click', async function(){
+      try {
+        var count = await window.aitxtHistory.countRecords();
+        if(count === 0){ alert('当前无记录'); return; }
+        if(!confirm('确定清理全部 ' + count + ' 条记录？此操作不可恢复')) return;
+        await window.aitxtHistory.clearAll();
+        if(window.aitxtDrawer) await window.aitxtDrawer.renderList();
+        // 隐藏预览
+        var $pv = document.getElementById('drawerPreview');
+        if($pv){ $pv.style.display = 'none'; $pv.innerHTML = ''; }
+      } catch(e){
+        console.warn('[aitxtHistory] clearAll failed:', e);
+        alert('清理失败：' + (e && e.message ? e.message : e));
+      }
+    });
+  }
+
+  // Task 14.3: 页面加载时自动清理过期记录
+  if(window.aitxtHistory){
+    window.aitxtHistory.cleanupOld(state.historyCleanupDays).then(function(n){
+      if(n > 0) console.log('[aitxtHistory] cleanup deleted', n, 'old records');
+    }).catch(function(e){ console.warn('[aitxtHistory] cleanup failed:', e); });
+  }
+
+  // Task 15-18: 暴露 state 给 aitxtDrawer 等其他 IIFE（currentMethod 读写）
+  window.state = state;
 })();
 </script>
+
 </body>
 </html>
