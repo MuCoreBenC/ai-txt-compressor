@@ -230,6 +230,7 @@ impl OpenAiCompatClient {
         user: &str,
         reasoning_effort: Option<&str>,
         sink: &mut tokio::sync::mpsc::Sender<crate::pipeline::StreamEvent>,
+        cancel: tokio_util::sync::CancellationToken,
     ) -> Result<ModelOutput> {
         use futures::StreamExt;
 
@@ -290,8 +291,28 @@ impl OpenAiCompatClient {
         let mut line_buf = String::new();
         let mut usage = Usage::default();
 
-        while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result.context("读取流失败")?;
+        // 循环检测器：
+        // - content 用 N-gram 检测（短片段重复）
+        // - reasoning_content 用长段落哈希检测（整段重复，避免误判正常推导）
+        let mut content_loop_detector = crate::model::loop_detector::LoopDetector::new();
+        let mut reasoning_loop_detector = crate::model::loop_detector::ThinkingLoopDetector::new();
+        let mut loop_detected = false;
+
+        loop {
+            tokio::select! {
+                biased;
+                _ = cancel.cancelled() => {
+                    // 用户取消：break 循环，drop stream 关闭 HTTP 连接
+                    tracing::info!(model = %self.model, "OpenAI 兼容流式调用被用户取消");
+                    break;
+                }
+                chunk_result = stream.next() => {
+                    match chunk_result {
+                        None => break,
+                        Some(Err(e)) => {
+                            return Err(anyhow!("读取流失败：{}", e));
+                        }
+                        Some(Ok(chunk)) => {
             let s = std::str::from_utf8(&chunk).context("流响应非 UTF-8")?;
             line_buf.push_str(s);
 
@@ -336,6 +357,15 @@ impl OpenAiCompatClient {
                 if let Some(content) = value["choices"][0]["delta"]["content"].as_str() {
                     if !content.is_empty() {
                         content_buf.push_str(content);
+                        // 循环检测：feed 返回 true 表示检测到重复，主动中断
+                        if content_loop_detector.feed(content) {
+                            tracing::warn!(model = %self.model, "检测到 content 输出循环，主动中断");
+                            let _ = sink
+                                .send(crate::pipeline::StreamEvent::ModelLoopDetected { t: 0 })
+                                .await;
+                            loop_detected = true;
+                            break;
+                        }
                         let _ = sink
                             .send(crate::pipeline::StreamEvent::ModelDelta {
                                 delta: content.to_string(),
@@ -346,10 +376,19 @@ impl OpenAiCompatClient {
                 }
 
                 // 提取 delta.reasoning_content（DeepSeek V4 thinking mode 的思考链增量）
-                // 与 content 平级，通过 ModelReasoning 事件实时推送给前端思考面板
                 if let Some(reasoning) = value["choices"][0]["delta"]["reasoning_content"].as_str() {
                     if !reasoning.is_empty() {
                         reasoning_buf.push_str(reasoning);
+                        // 思考链用长段落哈希检测：整段 200 字符完全相同才计数
+                        // 正常推导不会整段雷同，只有循环才会触发
+                        if reasoning_loop_detector.feed(reasoning) {
+                            tracing::warn!(model = %self.model, "检测到 reasoning_content 整段重复循环，主动中断");
+                            let _ = sink
+                                .send(crate::pipeline::StreamEvent::ModelLoopDetected { t: 0 })
+                                .await;
+                            loop_detected = true;
+                            break;
+                        }
                         let _ = sink
                             .send(crate::pipeline::StreamEvent::ModelReasoning {
                                 delta: reasoning.to_string(),
@@ -375,6 +414,18 @@ impl OpenAiCompatClient {
                     }
                 }
             }
+            if loop_detected {
+                break;
+            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if loop_detected {
+            tracing::info!(model = %self.model, "流式调用因循环检测提前终止，已接收 content {} 字符 / reasoning {} 字符",
+                content_buf.chars().count(), reasoning_buf.chars().count());
         }
 
         let raw_truncated = if raw_buf.len() > 4000 {

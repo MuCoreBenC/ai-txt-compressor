@@ -2,5 +2,6 @@
 //!
 //! 实际 provider 调度见 pipeline.rs
 
+pub mod loop_detector;
 pub mod ollama;
 pub mod openai_compat;

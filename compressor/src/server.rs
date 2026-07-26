@@ -14,10 +14,14 @@ use axum::{
     Json, Router,
 };
 use futures::stream::StreamExt;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
+use tokio::sync::Mutex;
 use tokio_stream::wrappers::ReceiverStream;
+use tokio_util::sync::CancellationToken;
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::model::ollama::OllamaClient;
@@ -26,6 +30,12 @@ use crate::prompt::PresetPrompt;
 
 /// 编译时嵌入前端页面，生成真正的单文件二进制
 static INDEX_HTML: &str = include_str!("../../compress.html");
+
+/// 全局取消注册表：request_id → CancellationToken
+/// 前端点"停止"按钮时 POST /cancel { request_id }，后端查表触发 cancel.cancel()
+/// 任务完成后从注册表移除
+static CANCEL_REGISTRY: Lazy<Mutex<HashMap<String, CancellationToken>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Deserialize)]
 struct CompressRequest {
@@ -66,6 +76,9 @@ struct CompressRequest {
     /// 显式覆盖目标字数（用于用户直接指定"压到 1000 字"）
     #[serde(default)]
     target_chars: Option<usize>,
+    /// 请求 ID（前端生成，用于关联 /cancel 请求）
+    #[serde(default)]
+    request_id: Option<String>,
 }
 
 fn default_ratio() -> f32 {
@@ -122,6 +135,7 @@ pub async fn run(args: crate::Cli) -> anyhow::Result<()> {
         .route("/ollama/pull", post(ollama_pull_handler))
         .route("/ollama/tags", get(ollama_tags_handler))
         .route("/ollama/unload", post(ollama_unload_handler))
+        .route("/cancel", post(cancel_handler))
         .route("/shutdown", post(shutdown_handler))
         .layer(cors)
         .with_state(state);
@@ -276,9 +290,25 @@ async fn compress_stream_handler(
     // 保留一个 sender 用于 compress_stream 异常时推送 Error 事件
     let tx_for_error = tx.clone();
 
+    // 创建 CancellationToken 并注册到全局表，前端可通过 POST /cancel { request_id } 触发取消
+    let cancel = CancellationToken::new();
+    let request_id = req.request_id.clone().unwrap_or_else(|| {
+        // 未提供 request_id 时生成一个（兼容旧前端）
+        format!("auto-{}", std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0))
+    });
+    {
+        let mut registry = CANCEL_REGISTRY.lock().await;
+        registry.insert(request_id.clone(), cancel.clone());
+    }
+
     let text = req.text.clone();
+    let cancel_for_cleanup = cancel.clone();
+    let request_id_for_cleanup = request_id.clone();
     tokio::spawn(async move {
-        let result = compress_stream(&text, &opts, tx).await;
+        let result = compress_stream(&text, &opts, tx, cancel).await;
         if let Err(e) = result {
             let _ = tx_for_error
                 .send(StreamEvent::Error {
@@ -287,7 +317,11 @@ async fn compress_stream_handler(
                 })
                 .await;
         }
+        // 任务完成：从取消注册表移除
+        let mut registry = CANCEL_REGISTRY.lock().await;
+        registry.remove(&request_id_for_cleanup);
         // tx 在此 drop，channel 关闭，SSE 流结束
+        let _ = cancel_for_cleanup; // 避免 unused warning
     });
 
     let stream = ReceiverStream::new(rx).map(|event| {
@@ -296,6 +330,28 @@ async fn compress_stream_handler(
     });
 
     Ok(Sse::new(stream))
+}
+
+// ==================== 取消压缩任务 ====================
+
+#[derive(Deserialize)]
+struct CancelRequest {
+    request_id: String,
+}
+
+/// 取消指定 request_id 的压缩任务
+/// 前端点"停止"按钮时调用，触发对应 CancellationToken.cancel()
+/// 后端 compress_stream 的 select! 分支会感知到取消信号并中断模型调用
+async fn cancel_handler(Json(req): Json<CancelRequest>) -> Json<serde_json::Value> {
+    let registry = CANCEL_REGISTRY.lock().await;
+    if let Some(cancel) = registry.get(&req.request_id) {
+        cancel.cancel();
+        tracing::info!(request_id = %req.request_id, "收到取消请求，已触发 CancellationToken");
+        Json(serde_json::json!({"success": true}))
+    } else {
+        tracing::warn!(request_id = %req.request_id, "取消请求失败：request_id 不存在（任务可能已完成）");
+        Json(serde_json::json!({"success": false, "error": "task not found or already completed"}))
+    }
 }
 
 // ==================== 预设提示词 ====================
@@ -333,6 +389,12 @@ async fn preset_prompts_handler() -> Json<PresetPromptsResponse> {
             name: PresetPrompt::StrictChars.name(),
             system: PresetPrompt::StrictChars.system(),
             user_template: PresetPrompt::StrictChars.user_template(),
+        },
+        PresetPromptInfo {
+            id: PresetPrompt::TaskStyle.id(),
+            name: PresetPrompt::TaskStyle.name(),
+            system: PresetPrompt::TaskStyle.system(),
+            user_template: PresetPrompt::TaskStyle.user_template(),
         },
     ];
     Json(PresetPromptsResponse { presets })

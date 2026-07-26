@@ -550,8 +550,19 @@
     background:var(--bg);border:1px solid var(--border-soft);border-radius:3px;
     padding:10px 12px;font-family:var(--mono);font-size:12px;line-height:1.55;
     color:var(--text);white-space:pre-wrap;word-break:break-word;max-height:240px;overflow:auto;
+    transition:max-height .2s ease;
   }
   .log-pre.muted{color:var(--muted)}
+  /* 展开/收起态：展开时移除高度限制（log-pre 和 textarea 通用） */
+  .log-pre.expanded, textarea.expanded{max-height:none}
+  /* 展开按钮容器（标题栏右侧） */
+  .log-section-title .expand-toggle, .prompt-field > .label .expand-toggle{
+    font-family:var(--mono);background:transparent;color:var(--muted);
+    border:1px solid var(--border-soft);border-radius:2px;
+    padding:2px 8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    cursor:pointer;transition:all .14s;margin-left:6px;
+  }
+  .log-section-title .expand-toggle:hover, .prompt-field > .label .expand-toggle:hover{border-color:var(--accent-dim);color:var(--accent)}
   .log-kv{display:grid;grid-template-columns:140px 1fr;gap:6px 14px;font-size:12px}
   .log-kv .k{color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:10.5px;padding-top:2px}
   .log-kv .v{color:var(--text);word-break:break-all}
@@ -660,6 +671,20 @@
     color:var(--accent-dim);font-size:11px;text-decoration:none;letter-spacing:.1em;
   }
   .pull-more-link:hover{color:var(--accent)}
+
+  /* ===== 下载 toast（右下角悬浮，后台下载时显示） ===== */
+  .pull-toast{
+    position:fixed;right:20px;bottom:20px;z-index:10000;
+    width:320px;background:var(--surface);border:1px solid var(--border-soft);
+    border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);
+    padding:12px 14px;font-size:13px;
+  }
+  .pull-toast-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .pull-toast-title{flex:1;font-weight:600;color:var(--fg);letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pull-toast-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:2px 6px;border-radius:3px}
+  .pull-toast-btn:hover{background:var(--surface-2);color:var(--fg)}
+  .pull-toast-status{font-size:12px;color:var(--accent-2);margin-bottom:6px;letter-spacing:.04em;word-break:break-all}
+  .pull-toast .pull-progress-bar{margin-bottom:0}
 
   /* ===== Task 9: result warn bar (字数不达标) ===== */
   .result-warn{margin:8px 0 0;padding:8px 12px;background:rgba(255,200,87,.08);border:1px solid var(--accent-2);border-radius:3px;display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--accent-2);font-size:12px;letter-spacing:.06em}
@@ -797,6 +822,15 @@
             </select>
             <input type="text" id="reasoningCustom" placeholder="如 medium/low/xhigh 或数值" style="display:none;width:140px;padding:6px 8px;font-size:12px;font-family:var(--mono);background:var(--bg-2);border:1px solid var(--border);border-radius:3px;color:var(--text)" title="自定义推理强度（直接传给厂商 API）" />
             <span id="reasoningHint" class="hint" style="display:none;color:var(--accent-2);font-size:12px">DeepSeek V4 仅支持 high/max</span>
+          </div>
+          <div class="dc-row" id="presetRow">
+            <span class="dc-label">提示词</span>
+            <select id="presetSel" style="cursor:pointer" title="预设提示词（普通拆分和重试都会使用当前选中）">
+              <option value="standard">标准</option>
+              <option value="strict_chars">严格字数</option>
+              <option value="minimal">极简</option>
+              <option value="task_style">任务式（小模型友好）</option>
+            </select>
           </div>
           <div class="dc-row">
             <span class="dc-label">服务地址</span>
@@ -942,6 +976,7 @@
               <div class="label">
                 <span>System · 系统提示词</span>
                 <span class="ph">定义角色与硬性规则</span>
+                <button type="button" class="expand-toggle" data-expand-target="promptSystem">展开</button>
               </div>
               <textarea id="promptSystem" spellcheck="false" placeholder="加载默认提示词中…"></textarea>
             </div>
@@ -949,6 +984,7 @@
               <div class="label">
                 <span>User · 用户模板</span>
                 <span class="ph">占位符 {text} {target} {orig} {cut}</span>
+                <button type="button" class="expand-toggle" data-expand-target="promptUser">展开</button>
               </div>
               <textarea id="promptUser" spellcheck="false" placeholder="加载默认提示词中…"></textarea>
             </div>
@@ -1047,6 +1083,19 @@
     </div>
   </div>
 
+  <!-- 下载 toast（右下角悬浮，关闭对话框时后台下载显示） -->
+  <div id="pullToast" class="pull-toast" style="display:none">
+    <div class="pull-toast-header">
+      <span class="pull-toast-title">下载中：<span id="pullToastName"></span></span>
+      <button type="button" id="btnPullToastExpand" class="pull-toast-btn" title="展开对话框">展开</button>
+      <button type="button" id="btnPullToastClose" class="pull-toast-btn" title="停止下载并关闭">✕</button>
+    </div>
+    <div class="pull-toast-body">
+      <div id="pullToastStatus" class="pull-toast-status">准备中...</div>
+      <div class="pull-progress-bar"><div id="pullToastFill"></div></div>
+    </div>
+  </div>
+
 <script>
 (function(){
   "use strict";
@@ -1092,6 +1141,7 @@
   var $apiKeyInput=document.getElementById("apiKeyInput");
   var $btnToggleKey=document.getElementById("btnToggleKey");
   var $reasoningSel=document.getElementById("reasoningSel");
+  var $presetSel=document.getElementById("presetSel");
   var $reasoningHint=document.getElementById("reasoningHint");
   var $deepConfig=document.getElementById("deepConfig");
   var $ratioGroup=document.getElementById("ratioGroup");
@@ -1121,6 +1171,13 @@
   var $pullStatusText=document.getElementById("pullStatusText");
   var $pullProgressFill=document.getElementById("pullProgressFill");
   var $btnPullStop=document.getElementById("btnPullStop");
+  // 下载 toast 元素
+  var $pullToast=document.getElementById("pullToast");
+  var $pullToastName=document.getElementById("pullToastName");
+  var $pullToastStatus=document.getElementById("pullToastStatus");
+  var $pullToastFill=document.getElementById("pullToastFill");
+  var $btnPullToastExpand=document.getElementById("btnPullToastExpand");
+  var $btnPullToastClose=document.getElementById("btnPullToastClose");
   var $btnSelectAll=document.getElementById("btnSelectAll");
   var $btnInlineClear=document.getElementById("btnInlineClear");
   var $formMsg=document.getElementById("formMsg");
@@ -1236,14 +1293,17 @@
     streamContext: null,    // 保存 ModelStart 时的 system_prompt/user_prompt/参数
     lastAlgoText: '',       // 保存算法输出（用于重试）
     lastTarget: 0,          // 保存目标字数（用于字数检查）
-    currentPreset: 'standard', // 当前使用的预设
+    currentPreset: localStorage.getItem("aitxt.preset") || 'standard', // 当前使用的预设（持久化）
+    presetCache: null,                // /preset-prompts 接口缓存（避免频繁请求）
     // Task 1b: 流式压缩手动停止
     currentAbortController: null,  // 当前流式请求的 AbortController
+    currentRequestId: null,        // 当前流式请求的 request_id（用于 POST /cancel）
     streamStartTime: 0,             // 流式开始时间戳（用于日志 t 字段）
     firstDeltaReceived: false,      // 是否已收到首个 ModelDelta（避免心跳覆盖流式输出）
     inThinking: false,              // 是否处于思考中（用于显示"💭 模型正在思考"占位符）
     hbTimer: null,                  // 心跳客户端计时器（每秒更新 logSummary 秒数）
-    lastHeartbeatPhase: null        // 最近一次心跳 phase 文案（供计时器使用）
+    lastHeartbeatPhase: null,       // 最近一次心跳 phase 文案（供计时器使用）
+    reasoningUserScrolled: false    // 用户是否手动滚动过思考面板（true 时暂停自动滚到底，滚回底部时恢复）
   };
   // 各 provider 对应的模型选项（启动时优先读 localStorage，刷新页面不丢失已下载的 ollama 模型）
   var PROVIDER_MODELS = (function(){
@@ -1603,6 +1663,17 @@
       localStorage.setItem("aitxt.reasoningEffortCustom", v);
     });
   }
+  // 预设提示词下拉：选中即存 localStorage，普通拆分和重试都会用当前选中
+  if($presetSel){
+    $presetSel.value = state.currentPreset;
+    $presetSel.addEventListener("change", function(){
+      state.currentPreset = $presetSel.value;
+      localStorage.setItem("aitxt.preset", state.currentPreset);
+      // 联动 PROMPT 面板：显示选中预设的内容（若用户无自定义）
+      syncPromptTextareas();
+      updatePromptBadge();
+    });
+  }
   // 卸载 Ollama 模型：调用后端 /ollama/unload 路由，后端代理到 Ollama /api/generate keep_alive=0
   if($btnUnloadModel){
     $btnUnloadModel.addEventListener("click", async function(){
@@ -1733,6 +1804,8 @@
 
   // ===== Task 5: 下载 Ollama 模型对话框 =====
   var pullAbortController = null;  // 用于停止 pull 流
+  var pullCurrentName = '';       // 当前下载中的模型名（供 toast 显示）
+  var pullToastHideTimer = null;  // toast 自动隐藏定时器
   function openPullDialog(){
     $pullDialog.style.display = 'flex';
     loadLocalModels();
@@ -1741,13 +1814,34 @@
     $pullProgress.style.display = 'none';
     $pullProgressFill.style.width = '0%';
     $pullStatusText.textContent = '准备中...';
+    // 若 toast 可见则隐藏（对话框已打开，toast 冗余）
+    if($pullToast.style.display === 'block' && !pullAbortController){
+      hidePullToast();
+    }
   }
   function closePullDialog(){
-    $pullDialog.style.display = 'none';
-    // 关闭时若有 pull 进行中，停止它
+    // 若有 pull 进行中，转为后台下载：隐藏对话框，显示 toast（不 abort）
     if(pullAbortController){
-      pullAbortController.abort();
-      pullAbortController = null;
+      $pullDialog.style.display = 'none';
+      showPullToast(pullCurrentName);
+    }else{
+      $pullDialog.style.display = 'none';
+      hidePullToast();
+    }
+  }
+  // 显示 toast 并更新模型名
+  function showPullToast(name){
+    if(pullToastHideTimer){ clearTimeout(pullToastHideTimer); pullToastHideTimer = null; }
+    $pullToastName.textContent = name || '';
+    $pullToast.style.display = 'block';
+  }
+  // 隐藏 toast（延迟可选，ms=0 立即隐藏）
+  function hidePullToast(delayMs){
+    if(pullToastHideTimer){ clearTimeout(pullToastHideTimer); pullToastHideTimer = null; }
+    if(delayMs && delayMs > 0){
+      pullToastHideTimer = setTimeout(function(){ $pullToast.style.display = 'none'; }, delayMs);
+    }else{
+      $pullToast.style.display = 'none';
     }
   }
   // 加载已下载模型列表
@@ -1817,6 +1911,7 @@
     for(var i = 0; i < btns.length; i++){ btns[i].disabled = true; }
     $btnPullCustom.disabled = true;
     pullAbortController = new AbortController();
+    pullCurrentName = name;
     try{
       var res = await fetch(state.baseURL + '/ollama/pull', {
         method: 'POST',
@@ -1854,15 +1949,22 @@
         }
       }
     }catch(e){
+      var errText;
       if(e && e.name === 'AbortError'){
-        $pullStatusText.textContent = '已停止下载 ' + name;
-        $pullStatusText.style.color = 'var(--danger)';
+        errText = '已停止下载 ' + name;
       }else{
-        $pullStatusText.textContent = '下载失败：' + (e.message || e);
-        $pullStatusText.style.color = 'var(--danger)';
+        errText = '下载失败：' + (e.message || e);
+      }
+      $pullStatusText.textContent = errText;
+      $pullStatusText.style.color = 'var(--danger)';
+      // 同步到 toast（后台模式）
+      if($pullToast.style.display === 'block'){
+        $pullToastStatus.textContent = errText;
+        $pullToastStatus.style.color = 'var(--danger)';
       }
     }finally{
       pullAbortController = null;
+      pullCurrentName = '';
       // 恢复下载按钮
       var btns2 = $pullRecomList.querySelectorAll('button');
       for(var n = 0; n < btns2.length; n++){ btns2[n].disabled = false; }
@@ -1872,25 +1974,47 @@
       loadLocalModels();
       // Task 5.6: 刷新 PROVIDER_MODELS.ollama + 重新渲染 modelSel
       refreshOllamaModels();
+      // 若 toast 可见（后台模式），延迟 3s 自动隐藏
+      if($pullToast.style.display === 'block'){
+        hidePullToast(3000);
+      }
     }
   }
-  // 处理 pull SSE 事件
+  // 处理 pull SSE 事件（同步更新对话框进度区和 toast）
   function handlePullEvent(jsonStr, name){
     var ev;
     try{ ev = JSON.parse(jsonStr); }catch(e){ return; }
     var t = ev.type || '';
+    var toastVisible = ($pullToast.style.display === 'block');
     if(t === 'PullProgress'){
       var pct = ev.percent || 0;
+      var progressText = '下载 ' + name + ' · ' + pct + '% · ' + (ev.status || '') + (ev.total ? ' ('+formatBytes(ev.completed)+'/'+formatBytes(ev.total)+')' : '');
       $pullProgressFill.style.width = pct + '%';
       $pullStatusText.style.color = 'var(--accent-2)';
-      $pullStatusText.textContent = '下载 ' + name + ' · ' + pct + '% · ' + (ev.status || '') + (ev.total ? ' ('+formatBytes(ev.completed)+'/'+formatBytes(ev.total)+')' : '');
+      $pullStatusText.textContent = progressText;
+      if(toastVisible){
+        $pullToastFill.style.width = pct + '%';
+        $pullToastStatus.style.color = 'var(--accent-2)';
+        $pullToastStatus.textContent = progressText;
+      }
     }else if(t === 'PullDone'){
+      var doneText = '✓ ' + name + ' 下载完成';
       $pullProgressFill.style.width = '100%';
       $pullStatusText.style.color = 'var(--accent)';
-      $pullStatusText.textContent = '✓ ' + name + ' 下载完成';
+      $pullStatusText.textContent = doneText;
+      if(toastVisible){
+        $pullToastFill.style.width = '100%';
+        $pullToastStatus.style.color = 'var(--accent)';
+        $pullToastStatus.textContent = doneText;
+      }
     }else if(t === 'PullError'){
+      var errText = '下载失败：' + (ev.msg || ev.error || '未知错误');
       $pullStatusText.style.color = 'var(--danger)';
-      $pullStatusText.textContent = '下载失败：' + (ev.msg || ev.error || '未知错误');
+      $pullStatusText.textContent = errText;
+      if(toastVisible){
+        $pullToastStatus.style.color = 'var(--danger)';
+        $pullToastStatus.textContent = errText;
+      }
     }
   }
   function formatBytes(b){
@@ -1963,6 +2087,22 @@
       pullAbortController.abort();
       pullAbortController = null;
     }
+    // 停止时一并隐藏 toast
+    hidePullToast();
+  });
+  // toast 展开：重新显示对话框（复用进行中的 pull，不重新发起）
+  $btnPullToastExpand.addEventListener("click", function(){
+    $pullToast.style.display = 'none';
+    if(pullToastHideTimer){ clearTimeout(pullToastHideTimer); pullToastHideTimer = null; }
+    $pullDialog.style.display = 'flex';
+  });
+  // toast 关闭：停止下载 + 隐藏 toast
+  $btnPullToastClose.addEventListener("click", function(){
+    if(pullAbortController){
+      pullAbortController.abort();
+      pullAbortController = null;
+    }
+    hidePullToast();
   });
   // 点击 overlay 外部关闭对话框
   $pullDialog.addEventListener("click", function(e){
@@ -2138,10 +2278,9 @@
       if(state.apiKey) body.api_key = state.apiKey;
       if(state.provider === 'custom' && state.baseUrl) body.base_url = state.baseUrl;
     }
-    // 推理强度：none 时不传
-    if(state.reasoningEffort && state.reasoningEffort !== 'none'){
-      body.reasoning_effort = state.reasoningEffort;
-    }
+    // 推理强度：始终传（包括 none），让后端 ollama 显式 think:false 关闭思考
+    // 旧逻辑 none 时不传字段 → 后端 None → qwen3 默认开 thinking，"不思考"无效
+    body.reasoning_effort = state.reasoningEffort || 'none';
     // 自定义提示词（空字符串不传，由后端用默认）
     if(state.customSystem && state.customSystem.trim()){
       body.custom_system = state.customSystem;
@@ -2166,12 +2305,15 @@
     opts = opts || {};
     // 模型模式时算法阶段固定 0.66，否则用用户选择的比例
     var ratio = state.useModel ? 0.66 : currentRatio();
+    // 生成唯一 request_id 用于关联 /cancel 请求（前端点"停止"按钮时用）
+    state.currentRequestId = 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
     var body = {
       text: text,
       ratio: ratio,
       no_model: !state.useModel,
       provider: state.provider,
-      model: state.model
+      model: state.model,
+      request_id: state.currentRequestId
     };
     // Task 3: 字数模式时传 target_chars
     if(state.useModel && state.targetMode === 'chars' && state.targetChars && parseInt(state.targetChars) > 0){
@@ -2184,9 +2326,8 @@
       if(state.apiKey) body.api_key = state.apiKey;
       if(state.provider === 'custom' && state.baseUrl) body.base_url = state.baseUrl;
     }
-    if(state.reasoningEffort && state.reasoningEffort !== 'none'){
-      body.reasoning_effort = state.reasoningEffort;
-    }
+    // 推理强度：始终传（包括 none），让后端 ollama 显式 think:false 关闭思考
+    body.reasoning_effort = state.reasoningEffort || 'none';
     if(state.customSystem && state.customSystem.trim()){
       body.custom_system = state.customSystem;
     }
@@ -2277,8 +2418,9 @@
         if(event.algo_text) state.lastAlgoText = event.algo_text;
         break;
       case "ModelStart":
+        var loadHint = event.already_loaded ? '模型已在内存，开始推理' : '首次加载模型到内存';
         appendLogEntry({t:t, level:'info', stage:'model',
-          msg:'调用模型：provider=' + (event.provider||'') + ', model=' + (event.model||'') + ', reasoning=' + (event.reasoning_effort||'none') + ', 输入 ' + (event.input_chars||0) + ' 字'});
+          msg:'调用模型：provider=' + (event.provider||'') + ', model=' + (event.model||'') + ', reasoning=' + (event.reasoning_effort||'none') + ', 输入 ' + (event.input_chars||0) + ' 字，预设=' + (state.currentPreset||'standard') + '，' + loadHint});
         setStep(3);
         $btnSplit.innerHTML='<span class="spinner"></span>模型压缩…';
         $resultText.textContent = '';
@@ -2290,13 +2432,14 @@
           provider: event.provider,
           model: event.model,
           reasoning_effort: event.reasoning_effort,
-          input_chars: event.input_chars
+          input_chars: event.input_chars,
+          already_loaded: event.already_loaded
         };
         startModelTimer();
         // 启动客户端心跳计时器：每秒独立更新 logSummary 的秒数，
         // 避免后端心跳停止后秒数冻结在最后一次心跳的值
         if(state.hbTimer) clearInterval(state.hbTimer);
-        state.lastHeartbeatPhase = '模型加载中…';
+        state.lastHeartbeatPhase = event.already_loaded ? '模型已加载，等待响应' : '模型加载中…';
         state.hbTimer = setInterval(function(){
           if(!modelStartTime){ return; }
           if(state.firstDeltaReceived || state.inThinking){
@@ -2312,7 +2455,7 @@
         // 立即显示加载提示，避免误以为卡死
         $logSummary.innerHTML = state.lastHeartbeatPhase + ' · 已等 <b>0</b>s';
         $logSummary.classList.remove("warn","err");
-        $resultText.textContent = '（模型加载中… 算法阶段已完成，正在等待模型响应）';
+        $resultText.textContent = '（' + loadHint + '… 算法阶段已完成，正在等待模型响应）';
         // 重置思考过程面板
         state.reasoningText = '';
         state.firstDeltaReceived = false;  // 重置首次 delta 标志，避免心跳覆盖流式输出
@@ -2346,14 +2489,22 @@
       case "ModelReasoning":
         // 模型思考链增量（DeepSeek reasoning_content / Ollama qwen3 thinking 标签）
         if(!$reasoningPanel) break;
-        $reasoningPanel.style.display = 'block';
-        $reasoningPanel.classList.remove('collapsed');
-        if($btnToggleReasoning) $btnToggleReasoning.textContent = '收起 ▴';
+        // 仅在面板首次显示时（从 display:none → block）展开，用户手动折叠后不强制展开
+        // 旧逻辑每次 ModelReasoning 都 remove('collapsed')，导致用户收起后下条增量又展开
+        var wasHidden = ($reasoningPanel.style.display === 'none' || !$reasoningPanel.style.display);
+        if(wasHidden){
+          $reasoningPanel.style.display = 'block';
+          $reasoningPanel.classList.remove('collapsed');
+          if($btnToggleReasoning) $btnToggleReasoning.textContent = '收起 ▴';
+        }
         state.reasoningText = (state.reasoningText || '') + (event.delta || '');
         if($reasoningBody) $reasoningBody.textContent = state.reasoningText;
         if($reasoningCnt) $reasoningCnt.textContent = state.reasoningText.length + ' 字';
-        // 自动滚动到底部
-        if($reasoningBody) $reasoningBody.scrollTop = $reasoningBody.scrollHeight;
+        // 自动滚动到底部：仅当面板未折叠 + 用户未手动滚动时
+        var notCollapsed = !$reasoningPanel.classList.contains('collapsed');
+        if($reasoningBody && notCollapsed && !state.reasoningUserScrolled){
+          $reasoningBody.scrollTop = $reasoningBody.scrollHeight;
+        }
         // 占位符：思考期间在 resultText 显示提示，避免用户以为卡死（首个 ModelDelta 到达后清空）
         if(!state.firstDeltaReceived && !state.inThinking){
           state.inThinking = true;
@@ -2384,11 +2535,8 @@
         var reduction = inChars > 0 ? ((1 - outChars/inChars) * 100).toFixed(1) : 0;
         appendLogEntry({t:t, level:'info', stage:'model',
           msg:'模型完成：' + inChars + ' → ' + outChars + ' 字（耗时 ' + (event.elapsed_ms||0) + 'ms，缩短 ' + reduction + '%，prompt_tokens=' + (event.prompt_tokens||0) + ', completion_tokens=' + (event.completion_tokens||0) + '）'});
-        // trae 风格：思考完成自动折叠（用户仍可点击 btnToggleReasoning 展开）
-        if($reasoningPanel && $reasoningPanel.style.display === 'block'){
-          $reasoningPanel.classList.add('collapsed');
-          if($btnToggleReasoning) $btnToggleReasoning.textContent = '展开 ▾';
-        }
+        // 思考完成：保留思考内容不自动折叠（用户要求"停止后也保留，直到下次拆分再覆盖"）
+        // 不再自动 collapsed，让用户自己决定是否折叠
         stopModelTimer();
         // 停止心跳计时器（避免持续更新已完成的 logSummary）
         if(state.hbTimer){ clearInterval(state.hbTimer); state.hbTimer = null; }
@@ -2439,6 +2587,32 @@
         }
         showMsg("处理失败：" + errMsg);
         break;
+      case "ModelAborted":
+        // 用户主动取消：停止心跳、显示"已停止"提示，思考内容保留
+        appendLogEntry({t:t, level:'warn', stage:'model', msg:'⚠ 用户已停止模型生成（思考内容已保留）'});
+        stopModelTimer();
+        if(state.hbTimer){ clearInterval(state.hbTimer); state.hbTimer = null; }
+        if($logSummary){
+          $logSummary.innerHTML = '⚠ 已停止 · 思考内容已保留';
+          $logSummary.classList.add('warn');
+          $logSummary.classList.remove('err');
+        }
+        break;
+      case "ModelLoopDetected":
+        // 后端检测到循环：停止心跳、显示醒目错误提示（红色 error 级别）
+        appendLogEntry({t:t, level:'error', stage:'model', msg:'⛔ 检测到模型输出循环，已主动中断。已生成内容已保留'});
+        stopModelTimer();
+        if(state.hbTimer){ clearInterval(state.hbTimer); state.hbTimer = null; }
+        if($logSummary){
+          $logSummary.innerHTML = '⛔ 检测到输出循环，已停止';
+          $logSummary.classList.add('err');
+          $logSummary.classList.remove('warn');
+        }
+        // 在结果区显示醒目提示
+        if($resultText){
+          $resultText.innerHTML = '<div style="color:var(--danger);font-weight:bold;padding:12px;border:1px solid var(--danger);border-radius:4px;background:rgba(217,69,69,0.08)">⛔ 检测到模型输出循环，已主动中断。<br>已生成内容已保留在下方，可点击"停止"后重试，或在推理强度选"不思考"。</div>';
+        }
+        break;
     }
   }
 
@@ -2483,7 +2657,8 @@
         completion_tokens: modelDoneEvent.completion_tokens || 0,
         reasoning_tokens: modelDoneEvent.reasoning_tokens || 0,
         error: modelDoneEvent.error || null,
-        raw_response: null
+        raw_response: null,
+        timing: modelDoneEvent.timing || null
       } : null,
       fallback_triggered: !!fallbackEvent,
       fallback_reason: fallbackEvent ? (fallbackEvent.reason || fallbackEvent.msg || "") : null
@@ -2621,6 +2796,29 @@
     }
   }
 
+  /**
+   * 渲染可折叠文本卡片（统一组件，用于运行日志各视图）
+   * @param {string} title - 标题
+   * @param {string} content - 内容
+   * @param {object} opts - {copyable:boolean, defaultExpanded:boolean, muted:boolean}
+   * @returns {string} HTML
+   */
+  function renderCollapsibleText(title, content, opts){
+    opts = opts || {};
+    var id = 'ct-' + Math.random().toString(36).slice(2, 9);
+    var expandedClass = opts.defaultExpanded ? ' expanded' : '';
+    var toggleText = opts.defaultExpanded ? '收起' : '展开';
+    var mutedClass = opts.muted ? ' muted' : '';
+    var styleAttr = opts.style ? ' style="'+esc(opts.style)+'"' : '';
+    var copyBtn = opts.copyable !== false
+      ? '<button type="button" class="copy-mini" data-copy-target="'+id+'">复制</button>'
+      : '';
+    var expandBtn = '<button type="button" class="expand-toggle" data-expand-target="'+id+'">'+toggleText+'</button>';
+    return '<div class="log-section">'+
+      '<div class="log-section-title">'+title+copyBtn+expandBtn+'</div>'+
+      '<div class="log-pre'+expandedClass+mutedClass+'" id="'+id+'"'+styleAttr+'>'+esc(content||'')+'</div>'+
+    '</div>';
+  }
   function esc(s){
     if(s===null||s===undefined) return "";
     return String(s).replace(/[&<>"']/g, function(c){
@@ -2679,18 +2877,8 @@
     var promptHtml="";
     var mc=log.model_call;
     if(mc){
-      promptHtml+='<div class="log-section">'+
-        '<div class="log-section-title">System Prompt · 系统提示词'+
-          '<button type="button" class="copy-mini" data-copy-target="prompt-system-text">复制</button>'+
-        '</div>'+
-        '<div class="log-pre" id="prompt-system-text">'+esc(mc.system_prompt||"")+'</div>'+
-      '</div>';
-      promptHtml+='<div class="log-section">'+
-        '<div class="log-section-title">User Prompt · 用户消息（占位符已替换）'+
-          '<button type="button" class="copy-mini" data-copy-target="prompt-user-text">复制</button>'+
-        '</div>'+
-        '<div class="log-pre" id="prompt-user-text">'+esc(mc.user_prompt||"")+'</div>'+
-      '</div>';
+      promptHtml+=renderCollapsibleText('System Prompt · 系统提示词', mc.system_prompt, {copyable:true});
+      promptHtml+=renderCollapsibleText('User Prompt · 用户消息（占位符已替换）', mc.user_prompt, {copyable:true});
       promptHtml+='<div class="log-section">'+
         '<div class="log-section-title">调用参数</div>'+
         '<div class="log-kv">'+
@@ -2726,17 +2914,42 @@
           kvRow("reasoning_tokens (推理)", mc.reasoning_tokens)+
         '</div>'+
       '</div>';
-      if(!mc.success){
+      // Ollama 性能统计面板（仅 ollama provider 且有 timing 数据时显示）
+      if(mc.timing && mc.provider === 'ollama'){
+        var tm = mc.timing;
+        // 纳秒转可读时长
+        function nsToReadable(ns){
+          if(!ns || ns === 0) return '0ms';
+          var ms = ns / 1000000;
+          if(ms < 1000) return ms.toFixed(2) + 'ms';
+          return (ms / 1000).toFixed(3) + 's';
+        }
+        // 计算速率（tokens/s）
+        var evalRate = (tm.eval_duration_ns > 0 && mc.completion_tokens > 0)
+          ? (mc.completion_tokens / (tm.eval_duration_ns / 1000000000)).toFixed(2) + ' tokens/s'
+          : '--';
+        var promptEvalRate = (tm.prompt_eval_duration_ns > 0 && mc.prompt_tokens > 0)
+          ? (mc.prompt_tokens / (tm.prompt_eval_duration_ns / 1000000000)).toFixed(2) + ' tokens/s'
+          : '--';
         modelHtml+='<div class="log-section">'+
-          '<div class="log-section-title">错误信息</div>'+
-          '<div class="log-pre" style="color:var(--danger)">'+esc(mc.error||"未知错误")+'</div>'+
+          '<div class="log-section-title">Ollama 性能统计</div>'+
+          '<div class="log-kv">'+
+            kvRow("total duration", nsToReadable(tm.total_duration_ns))+
+            kvRow("load duration", nsToReadable(tm.load_duration_ns))+
+            kvRow("prompt eval count", mc.prompt_tokens + ' token(s)')+
+            kvRow("prompt eval duration", nsToReadable(tm.prompt_eval_duration_ns))+
+            kvRow("prompt eval rate", promptEvalRate)+
+            kvRow("eval count", mc.completion_tokens + ' token(s)')+
+            kvRow("eval duration", nsToReadable(tm.eval_duration_ns))+
+            kvRow("eval rate", evalRate)+
+          '</div>'+
         '</div>';
       }
+      if(!mc.success){
+        modelHtml+=renderCollapsibleText('错误信息', mc.error||"未知错误", {copyable:true, defaultExpanded:true, style:'color:var(--danger)'});
+      }
       if(log.fallback_triggered){
-        modelHtml+='<div class="log-section">'+
-          '<div class="log-section-title">回退原因</div>'+
-          '<div class="log-pre" style="color:var(--accent-2)">'+esc(log.fallback_reason||"")+'</div>'+
-        '</div>';
+        modelHtml+=renderCollapsibleText('回退原因', log.fallback_reason||"", {copyable:true, defaultExpanded:true, style:'color:var(--accent-2)'});
       }
     }else{
       // model_call=null：根据 no_model 显示不同提示
@@ -2754,19 +2967,9 @@
     // 4. 原始 JSON 视图
     var rawHtml="";
     if(mc && mc.raw_response){
-      rawHtml+='<div class="log-section">'+
-        '<div class="log-section-title">模型原始响应（截断 4000 字符）'+
-          '<button type="button" class="copy-mini" data-copy-target="raw-response-text">复制</button>'+
-        '</div>'+
-        '<div class="log-pre" id="raw-response-text">'+esc(mc.raw_response)+'</div>'+
-      '</div>';
+      rawHtml+=renderCollapsibleText('模型原始响应（截断 4000 字符）', mc.raw_response, {copyable:true});
     }
-    rawHtml+='<div class="log-section">'+
-      '<div class="log-section-title">完整 RunLog JSON'+
-        '<button type="button" class="copy-mini" data-copy-target="raw-fulllog-text">复制</button>'+
-      '</div>'+
-      '<div class="log-pre" id="raw-fulllog-text">'+esc(JSON.stringify(log,null,2))+'</div>'+
-    '</div>';
+    rawHtml+=renderCollapsibleText('完整 RunLog JSON', JSON.stringify(log,null,2), {copyable:true});
     $logViewRaw.innerHTML=rawHtml;
 
     // 切到当前激活视图（防止跨视图残留）
@@ -2811,6 +3014,37 @@
     setTimeout(function(){ t.textContent=orig; }, 1200);
   });
 
+  // 日志区域展开/收起按钮（事件委托）：切换 .log-pre 的 expanded 类
+  document.addEventListener("click",function(e){
+    var t=e.target;
+    if(!t || !t.classList || !t.classList.contains("expand-toggle")) return;
+    var targetId=t.getAttribute("data-expand-target");
+    if(!targetId) return;
+    var node=document.getElementById(targetId);
+    if(!node) return;
+    var isExpanded=node.classList.toggle("expanded");
+    t.textContent=isExpanded?"收起":"展开";
+  });
+
+  // 日志区域 .log-pre 滚轮不冒泡：滚到顶/底时阻止页面滚动
+  document.addEventListener("wheel",function(e){
+    var t=e.target;
+    // 向上查找最近的 .log-pre 祖先
+    var node=t;
+    while(node && node !== document.body){
+      if(node.classList && node.classList.contains("log-pre")){
+        var atTop = node.scrollTop <= 0;
+        var atBottom = node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
+        // deltaY<0 向上滚，>0 向下滚
+        if((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)){
+          e.preventDefault();
+        }
+        break;
+      }
+      node=node.parentNode;
+    }
+  }, {passive:false});
+
   // ===== Prompt 编辑面板逻辑 =====
   function isPromptCustom(){
     return !!(state.customSystem && state.customSystem.trim()) || !!(state.customUserTemplate && state.customUserTemplate.trim());
@@ -2827,26 +3061,60 @@
     }
   }
   function syncPromptTextareas(){
-    // 显示当前生效的提示词（自定义优先，否则默认）
-    $promptSystem.value=state.customSystem || state.defaultSystem || "";
-    $promptUser.value=state.customUserTemplate || state.defaultUserTemplate || "";
+    // 显示当前生效的提示词：自定义优先，否则显示当前选中预设的内容
+    var presetId = state.currentPreset || 'standard';
+    var preset = getPresetFromCache(presetId);
+    var sysDefault = preset ? preset.system : (state.defaultSystem || "");
+    var userDefault = preset ? preset.user_template : (state.defaultUserTemplate || "");
+    $promptSystem.value=state.customSystem || sysDefault || "";
+    $promptUser.value=state.customUserTemplate || userDefault || "";
+  }
+  /// 从缓存中按 id 查找预设内容
+  function getPresetFromCache(presetId){
+    if(!state.presetCache || !state.presetCache.presets) return null;
+    for(var i=0;i<state.presetCache.presets.length;i++){
+      var p=state.presetCache.presets[i];
+      if(p.id===presetId) return p;
+    }
+    return null;
+  }
+  /// 拉取所有预设并缓存（仅拉一次，之后用缓存）
+  async function loadPresetPrompts(){
+    if(state.presetCache) return state.presetCache;
+    try{
+      var res=await fetch(state.baseURL+"/preset-prompts",{method:"GET"});
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      var data=await res.json();
+      state.presetCache=data;
+      // 兼容旧逻辑：defaultSystem/defaultUserTemplate 取 standard 预设
+      var std=getPresetFromCache('standard');
+      if(std){
+        state.defaultSystem=std.system;
+        state.defaultUserTemplate=std.user_template;
+      }
+      state.promptLoaded=true;
+      return data;
+    }catch(e){
+      // 回退到 /default-prompt 旧接口
+      try{
+        var res2=await fetch(state.baseURL+"/default-prompt",{method:"GET"});
+        var data2=await res2.json();
+        state.defaultSystem=data2.system||"";
+        state.defaultUserTemplate=data2.user_template||"";
+        state.promptLoaded=true;
+      }catch(e2){
+        $promptSystem.placeholder="加载默认提示词失败（后端服务未启动？）";
+        $promptUser.placeholder="加载默认提示词失败（后端服务未启动？）";
+      }
+      return null;
+    }
   }
   async function loadDefaultPrompt(){
     if(state.promptLoaded) return;
-    try{
-      var res=await fetch(state.baseURL+"/default-prompt",{method:"GET"});
-      if(!res.ok) throw new Error("HTTP "+res.status);
-      var data=await res.json();
-      state.defaultSystem=data.system||"";
-      state.defaultUserTemplate=data.user_template||"";
-      state.promptLoaded=true;
-      // 若用户没填自定义，文本框显示默认
-      if(!state.customSystem) $promptSystem.value=state.defaultSystem;
-      if(!state.customUserTemplate) $promptUser.value=state.defaultUserTemplate;
-    }catch(e){
-      $promptSystem.placeholder="加载默认提示词失败（后端服务未启动？）";
-      $promptUser.placeholder="加载默认提示词失败（后端服务未启动？）";
-    }
+    await loadPresetPrompts();
+    // 加载完成后同步显示
+    if(!state.customSystem) $promptSystem.value=state.defaultSystem;
+    if(!state.customUserTemplate) $promptUser.value=state.defaultUserTemplate;
   }
 
   $btnPromptSave.addEventListener("click",function(){
@@ -2873,14 +3141,14 @@
       $promptHint.textContent="默认提示词尚未加载，请先确保后端服务运行。";
       return;
     }
-    $promptSystem.value=state.defaultSystem;
-    $promptUser.value=state.defaultUserTemplate;
+    // 恢复到当前选中预设的内容（清除自定义后 syncPromptTextareas 会显示预设内容）
     state.customSystem="";
     state.customUserTemplate="";
     localStorage.removeItem("aitxt.customSystem");
     localStorage.removeItem("aitxt.customUserTemplate");
+    syncPromptTextareas();
     updatePromptBadge();
-    $promptHint.textContent="已恢复为默认提示词（未保存，点击「保存到本机」生效）。";
+    $promptHint.textContent="已恢复为当前预设提示词（未保存，点击「保存到本机」生效）。";
   });
   $btnPromptClear.addEventListener("click",function(){
     $promptSystem.value="";
@@ -2905,6 +3173,7 @@
   function initPromptPanel(){
     if(!state.promptLoaded){
       loadDefaultPrompt().then(function(){
+        syncPromptTextareas();
         updatePromptBadge();
       });
     }else{
@@ -2938,6 +3207,12 @@
   $btnSplit.addEventListener("click",async function(){
     var raw=$src.value;
     if(raw.trim().length===0){ showMsg("请输入文本"); return; }
+    // 新拆分时清空思考面板（用户要求"停止后保留思考，直到下次拆分再覆盖"）
+    if($reasoningBody) $reasoningBody.textContent = '';
+    state.reasoningText = '';
+    if($reasoningCnt) $reasoningCnt.textContent = '0 字';
+    if($reasoningPanel) $reasoningPanel.style.display = 'none';
+    state.reasoningUserScrolled = false;
     if(state.custom){
       if(!state.size || state.size<50 || state.size>10000){ showMsg("自定义字数需在 50–10000 之间"); return; }
     }
@@ -3026,7 +3301,7 @@
             streamResult=await deepCompressStream(cleaned, function(event){
               streamEvents.push(event);
               handleStreamEvent(event);
-            }, {}, state.currentAbortController.signal);
+            }, {preset: state.currentPreset}, state.currentAbortController.signal);
             state.currentAbortController = null;
           }catch(streamErr){
             state.currentAbortController = null;
@@ -3171,7 +3446,22 @@
   });
 
   // ===== Task 1b: 手动停止按钮 =====
+  // 双层停止：1) POST /cancel 触发后端 CancellationToken 中断模型调用
+  //          2) AbortController.abort() 切断浏览器 SSE 连接
   $btnStop.addEventListener("click", function(){
+    // 先发 /cancel 让后端停止模型调用（避免 Ollama 继续生成浪费资源）
+    if(state.currentRequestId){
+      fetch(state.baseURL + '/cancel', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({request_id: state.currentRequestId})
+      }).catch(function(e){
+        // 后端可能已关闭或 request_id 不存在，忽略错误
+        console.warn('cancel request failed:', e);
+      });
+      state.currentRequestId = null;
+    }
+    // 再切断 SSE 连接
     if(state.currentAbortController){
       state.currentAbortController.abort();
       state.currentAbortController = null;
@@ -3325,6 +3615,13 @@
       $btnToggleReasoning.textContent = collapsed ? '展开 ▾' : '收起 ▴';
     });
   }
+  // 思考面板智能滚动：用户往上滚后暂停自动滚到底，滚回底部时恢复
+  if($reasoningBody){
+    $reasoningBody.addEventListener("scroll", function(){
+      var atBottom = $reasoningBody.scrollTop + $reasoningBody.clientHeight >= $reasoningBody.scrollHeight - 30;
+      state.reasoningUserScrolled = !atBottom;
+    });
+  }
 
   // ===== Change 2: 抽屉式结果 Tab + 再拆分 + 合并 =====
   function pushResultTab(title, pieces, source, limit, firstLimit){
@@ -3442,12 +3739,14 @@
       showMsg("无算法输出可重试，请先完整执行一次压缩");
       return;
     }
-    // 切换 preset：standard → strict_chars → minimal → standard（循环）
-    var presets = ['standard', 'strict_chars', 'minimal'];
+    // 切换 preset：standard → strict_chars → minimal → task_style → standard（循环）
+    var presets = ['standard', 'strict_chars', 'minimal', 'task_style'];
     var idx = presets.indexOf(state.currentPreset);
     if(idx < 0) idx = 0;
     idx = (idx + 1) % presets.length;
     state.currentPreset = presets[idx];
+    if($presetSel) $presetSel.value = state.currentPreset;
+    localStorage.setItem("aitxt.preset", state.currentPreset);
     var presetNum = idx + 1;
 
     state.processing = true;
@@ -3459,7 +3758,7 @@
 
     // 清空旧日志，写入重试日志
     clearRunLog();
-    appendLogEntry({t:0, level:'info', stage:'retry', msg:'重试 · 切换到提示词 ' + presetNum + '/3：' + state.currentPreset});
+    appendLogEntry({t:0, level:'info', stage:'retry', msg:'重试 · 切换到提示词 ' + presetNum + '/4：' + state.currentPreset});
     applyLogView('entries');
 
     // 重置进度条

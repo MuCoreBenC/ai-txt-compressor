@@ -121,12 +121,29 @@ const STRICT_CHARS_USER_TEMPLATE: &str = r#"目标字数：{target}
 原文：
 {text}"#;
 
+/// 任务式预设：扁平"任务/规则/输出"格式，适合小模型（0.8B~3B）
+/// {cut} = 删除比例百分比（cut_pct = (1 - target/orig) * 100）
+const TASK_STYLE_SYSTEM: &str = "任务：压缩文本，删除约 {cut}% 的冗余内容。
+
+规则：
+- 只删除，不改写。
+- 保留事实、数字、专有名词、路径、代码、错误信息、结论。
+- 删除重复描述、背景说明、情绪表达。
+- 不总结，不归纳。
+- 不添加任何内容。
+
+输出：
+只输出压缩后的文本。";
+
+const TASK_STYLE_USER_TEMPLATE: &str = "{text}";
+
 /// 预设提示词 ID
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PresetPrompt {
     Minimal,
     Standard,
     StrictChars,
+    TaskStyle,
 }
 
 impl PresetPrompt {
@@ -134,6 +151,7 @@ impl PresetPrompt {
         match s {
             "minimal" => PresetPrompt::Minimal,
             "strict_chars" => PresetPrompt::StrictChars,
+            "task_style" => PresetPrompt::TaskStyle,
             _ => PresetPrompt::Standard,
         }
     }
@@ -143,6 +161,7 @@ impl PresetPrompt {
             PresetPrompt::Minimal => "minimal",
             PresetPrompt::Standard => "standard",
             PresetPrompt::StrictChars => "strict_chars",
+            PresetPrompt::TaskStyle => "task_style",
         }
     }
 
@@ -151,6 +170,7 @@ impl PresetPrompt {
             PresetPrompt::Minimal => "极简",
             PresetPrompt::Standard => "标准",
             PresetPrompt::StrictChars => "严格字数",
+            PresetPrompt::TaskStyle => "任务式（小模型友好）",
         }
     }
 
@@ -159,6 +179,7 @@ impl PresetPrompt {
             PresetPrompt::Minimal => MINIMAL_SYSTEM,
             PresetPrompt::Standard => DEFAULT_SYSTEM,
             PresetPrompt::StrictChars => STRICT_CHARS_SYSTEM,
+            PresetPrompt::TaskStyle => TASK_STYLE_SYSTEM,
         }
     }
 
@@ -167,13 +188,15 @@ impl PresetPrompt {
             PresetPrompt::Minimal => MINIMAL_USER_TEMPLATE,
             PresetPrompt::Standard => DEFAULT_USER_TEMPLATE,
             PresetPrompt::StrictChars => STRICT_CHARS_USER_TEMPLATE,
+            PresetPrompt::TaskStyle => TASK_STYLE_USER_TEMPLATE,
         }
     }
 }
 
 /// 基于预设构造 (system, user) 消息
 /// - custom_system / custom_user_template 优先于 preset
-/// - StrictChars 的 system 含 {target} 占位符，需先替换
+/// - system / user 支持 {target} / {orig} / {cut} / {text} 占位符
+///   {cut} = 删除比例百分比（cut_pct = (1 - target/orig) * 100）
 pub fn build_compress_messages_preset(
     text: &str,
     target_chars: usize,
@@ -182,6 +205,11 @@ pub fn build_compress_messages_preset(
     custom_user_template: Option<&str>,
 ) -> (String, String) {
     let original_chars = text.chars().count();
+    let cut_pct = if original_chars > 0 {
+        ((1.0 - target_chars as f32 / original_chars as f32) * 100.0) as u32
+    } else {
+        0
+    };
 
     let system_raw = custom_system
         .filter(|s| !s.trim().is_empty())
@@ -193,15 +221,16 @@ pub fn build_compress_messages_preset(
         .map(|s| s.to_string())
         .unwrap_or_else(|| preset.user_template().to_string());
 
-    // system 中也支持 {target} / {orig} 占位符（StrictChars 需要）
     let system = system_raw
         .replace("{target}", &target_chars.to_string())
-        .replace("{orig}", &original_chars.to_string());
+        .replace("{orig}", &original_chars.to_string())
+        .replace("{cut}", &cut_pct.to_string());
 
     let user = user_template
         .replace("{text}", text)
         .replace("{target}", &target_chars.to_string())
-        .replace("{orig}", &original_chars.to_string());
+        .replace("{orig}", &original_chars.to_string())
+        .replace("{cut}", &cut_pct.to_string());
 
     (system, user)
 }

@@ -135,6 +135,34 @@ struct ChatRequest<'a> {
     /// 默认 5m，这里设为 30m 让模型常驻内存，第二次调用起跳过加载阶段
     #[serde(rename = "keep_alive")]
     keep_alive: &'a str,
+    /// Ollama think 字段（0.17.6+）：可选 bool 或 level 字符串（"low"/"medium"/"high"/"max"）
+    /// - Some(Bool(false)) → 关闭思考（对应 /set nothink）
+    /// - Some(Bool(true)) → 开启思考（默认强度）
+    /// - Some(Level("high"/"max")) → 指定思考强度
+    /// - None → 不传，用模型默认
+    #[serde(skip_serializing_if = "Option::is_none")]
+    think: Option<ThinkParam>,
+}
+
+/// think 参数：支持 bool 或 level 字符串（untagged 序列化为 JSON 原始值）
+#[derive(Serialize)]
+#[serde(untagged)]
+enum ThinkParam {
+    Bool(bool),
+    Level(String),
+}
+
+/// 把 reasoning 字符串映射到 Ollama think 参数
+/// - "none" → Bool(false) 关闭思考
+/// - "high"/"max"/"medium"/"low" → Level(原值) 指定思考强度
+/// - 其他自定义值（如 "xhigh"）→ Level(原值)
+/// - None → None 不传 think，用模型默认
+fn reasoning_to_think(reasoning: Option<&str>) -> Option<ThinkParam> {
+    match reasoning {
+        Some("none") => Some(ThinkParam::Bool(false)),
+        Some(level) => Some(ThinkParam::Level(level.to_string())),
+        None => None,
+    }
 }
 
 #[derive(Serialize)]
@@ -147,6 +175,13 @@ struct Message<'a> {
 struct Options {
     temperature: f32,
     top_p: f32,
+    /// 重复惩罚因子（Ollama repeat_penalty）：>1 降低已出现 token 的概率
+    /// 默认 1.0 不惩罚，1.1-1.2 抑制重复，>1.2 可能导致语法崩溃
+    /// Qwen3 thinking 模式特别容易陷入循环，设为 1.15 从源头减少重复
+    repeat_penalty: f32,
+    /// 重复惩罚回溯窗口（Ollama repeat_last_n）：模型回头看多少个 token 判断重复
+    /// 默认 64 太短，设为 512 让惩罚覆盖更长的思考链
+    repeat_last_n: i32,
 }
 
 #[derive(Deserialize)]
@@ -156,11 +191,56 @@ struct ChatResponse {
     prompt_eval_count: Option<u32>,
     #[serde(default)]
     eval_count: Option<u32>,
+    /// Ollama 统计字段（非流式响应末尾返回，单位纳秒）
+    #[serde(default)]
+    total_duration: Option<u64>,
+    #[serde(default)]
+    load_duration: Option<u64>,
+    #[serde(default)]
+    prompt_eval_duration: Option<u64>,
+    #[serde(default)]
+    eval_duration: Option<u64>,
 }
 
 #[derive(Deserialize)]
 struct ResponseMessage {
+    /// 实际输出内容（think 模式下为纯输出，无 <think> 标签）
+    #[serde(default)]
     content: String,
+    /// 思考内容（Ollama 0.17+ think 模式下与 content 同级返回，流式增量）
+    /// 老版本或 think:false 时为 None
+    #[serde(default)]
+    thinking: Option<String>,
+}
+
+/// Ollama 性能统计（纳秒，前端转换为可读单位）
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct OllamaTiming {
+    /// 总耗时（纳秒）
+    pub total_duration_ns: u64,
+    /// 模型加载耗时（纳秒）
+    pub load_duration_ns: u64,
+    /// prompt 评估耗时（纳秒）
+    pub prompt_eval_duration_ns: u64,
+    /// 生成耗时（纳秒）
+    pub eval_duration_ns: u64,
+}
+
+impl OllamaTiming {
+    /// 计算生成速率（tokens/s），eval_duration 为纳秒
+    pub fn eval_rate(&self, eval_count: u32) -> Option<f64> {
+        if self.eval_duration_ns == 0 { return None; }
+        let secs = self.eval_duration_ns as f64 / 1_000_000_000.0;
+        if secs <= 0.0 { return None; }
+        Some(eval_count as f64 / secs)
+    }
+    /// 计算 prompt 评估速率（tokens/s）
+    pub fn prompt_eval_rate(&self, prompt_eval_count: u32) -> Option<f64> {
+        if self.prompt_eval_duration_ns == 0 { return None; }
+        let secs = self.prompt_eval_duration_ns as f64 / 1_000_000_000.0;
+        if secs <= 0.0 { return None; }
+        Some(prompt_eval_count as f64 / secs)
+    }
 }
 
 /// Ollama 调用结果（与 openai_compat::ModelOutput 结构对齐）
@@ -171,6 +251,9 @@ pub struct OllamaOutput {
     pub eval_count: u32,
     /// 原始 JSON 响应（截断到 4000 字符）
     pub raw_response: String,
+    /// 性能统计（流式从最后一个 chunk 提取，非流式从响应体提取）
+    #[serde(default)]
+    pub timing: OllamaTiming,
 }
 
 pub struct OllamaClient {
@@ -285,7 +368,12 @@ impl OllamaClient {
 
     /// 调用 Ollama chat 接口，system 隔离指令、user 给原文
     /// 返回完整输出（含 token 用量和原始响应）
-    pub async fn compress_full(&self, system: &str, user: &str) -> Result<OllamaOutput> {
+    /// reasoning 映射到 Ollama think 字段：
+    /// - Some("none") → think:false（关闭思考，对应 /set nothink）
+    /// - Some("high"/"max"/...) → think:"high"/"max"/...（指定思考强度）
+    /// - None → 不传 think，用模型默认
+    pub async fn compress_full(&self, system: &str, user: &str, reasoning: Option<&str>) -> Result<OllamaOutput> {
+        let think = reasoning_to_think(reasoning);
         let req = ChatRequest {
             model: &self.model,
             messages: vec![
@@ -302,8 +390,11 @@ impl OllamaClient {
             options: Options {
                 temperature: 0.3,
                 top_p: 0.9,
+                repeat_penalty: 1.15,
+                repeat_last_n: 512,
             },
             keep_alive: "30m",
+            think,
         };
         let resp = self
             .client
@@ -324,29 +415,49 @@ impl OllamaClient {
         };
         let body: ChatResponse = serde_json::from_str(&raw_text)
             .context(format!("解析 Ollama 响应失败，原始：{}", raw_truncated))?;
-        // 对 qwen3 thinking 模型，去除思考链标签内容
-        let mut parser = ThinkingParser::new();
-        parser.feed(&body.message.content);
-        parser.flush();
-        let clean_content = parser.output_full.trim().to_string();
+        // think 模式下 content 是纯输出（无 <think> 标签），thinking 字段是思考内容
+        // 兼容老版本：若 thinking 字段为空，content 可能含 <think> 标签，仍用 ThinkingParser 清洗
+        let clean_content = if body.message.thinking.is_some() {
+            // 新版 ollama：thinking 在独立字段，content 是纯输出
+            body.message.content.trim().to_string()
+        } else {
+            // 老版本或 think:false：content 可能含 <think> 标签，用 ThinkingParser 清洗
+            let mut parser = ThinkingParser::new();
+            parser.feed(&body.message.content);
+            parser.flush();
+            parser.output_full.trim().to_string()
+        };
         Ok(OllamaOutput {
             content: clean_content,
             prompt_eval_count: body.prompt_eval_count.unwrap_or(0),
             eval_count: body.eval_count.unwrap_or(0),
             raw_response: raw_truncated,
+            timing: OllamaTiming {
+                total_duration_ns: body.total_duration.unwrap_or(0),
+                load_duration_ns: body.load_duration.unwrap_or(0),
+                prompt_eval_duration_ns: body.prompt_eval_duration.unwrap_or(0),
+                eval_duration_ns: body.eval_duration.unwrap_or(0),
+            },
         })
     }
 
     /// 流式调用 Ollama chat 接口，通过 sink 推送 ModelDelta 事件
     /// 流结束后聚合 content、prompt_eval_count、eval_count、raw_response 返回 OllamaOutput
+    /// reasoning 映射到 Ollama think 字段：
+    /// - Some("none") → think:false（关闭思考）
+    /// - Some("high"/"max"/...) → think:"high"/"max"/...（开启思考，思考内容在 message.thinking 字段）
+    /// - None → 不传 think，用模型默认
     pub async fn compress_stream(
         &self,
         system: &str,
         user: &str,
+        reasoning: Option<&str>,
         sink: &mut tokio::sync::mpsc::Sender<crate::pipeline::StreamEvent>,
+        cancel: tokio_util::sync::CancellationToken,
     ) -> Result<OllamaOutput> {
         use futures::StreamExt;
 
+        let think = reasoning_to_think(reasoning);
         let req = ChatRequest {
             model: &self.model,
             messages: vec![
@@ -363,8 +474,11 @@ impl OllamaClient {
             options: Options {
                 temperature: 0.3,
                 top_p: 0.9,
+                repeat_penalty: 1.15,
+                repeat_last_n: 512,
             },
             keep_alive: "30m",
+            think,
         };
         let resp = self
             .client
@@ -385,22 +499,40 @@ impl OllamaClient {
         let mut line_buf = String::new();
         let mut prompt_eval_count: u32 = 0;
         let mut eval_count: u32 = 0;
+        // Ollama 统计字段（最后一个 chunk 才返回，单位纳秒）
+        let mut total_duration_ns: u64 = 0;
+        let mut load_duration_ns: u64 = 0;
+        let mut prompt_eval_duration_ns: u64 = 0;
+        let mut eval_duration_ns: u64 = 0;
         // thinking 标签解析状态机
         let mut thinking_parser = ThinkingParser::new();
+        // 循环检测器：
+        // - content 用 N-gram 检测（短片段重复）
+        // - thinking 用长段落哈希检测（整段重复，避免误判正常推导）
+        let mut content_loop_detector = crate::model::loop_detector::LoopDetector::new();
+        let mut thinking_loop_detector = crate::model::loop_detector::ThinkingLoopDetector::new();
+        let mut loop_detected = false;
         // 流式读取容错：单个 chunk 失败不直接返回 Err，记录 warn 后 break 循环
         // 保留已累积的 content_buf，流结束后判断是否完全失败
         let mut chunk_success: bool = false;
         let mut stream_error: Option<String> = None;
 
-        while let Some(chunk_result) = stream.next().await {
-            let chunk = match chunk_result {
-                Ok(c) => c,
-                Err(e) => {
-                    // 单个 chunk 读取失败：记录 warn，break 循环保留已累积内容
-                    stream_error = Some(format!("读取 Ollama 流失败：{}", e));
+        loop {
+            tokio::select! {
+                biased;
+                _ = cancel.cancelled() => {
+                    // 用户取消：break 循环，drop stream 关闭 HTTP 连接（Ollama 会感知客户端断开停止生成）
+                    tracing::info!(model = %self.model, "Ollama 流式调用被用户取消");
                     break;
                 }
-            };
+                chunk_result = stream.next() => {
+                    match chunk_result {
+                        None => break,
+                        Some(Err(e)) => {
+                            stream_error = Some(format!("读取 Ollama 流失败：{}", e));
+                            break;
+                        }
+                        Some(Ok(c)) => { let chunk = c;
             let s = match std::str::from_utf8(&chunk) {
                 Ok(s) => s,
                 Err(e) => {
@@ -435,15 +567,42 @@ impl OllamaClient {
                     Err(_) => continue,
                 };
 
-                // 提取 message.content（增量）
-                // 对 qwen3 等支持 thinking 的模型，content 可能含开闭标签
-                // 需要分离 thinking（推送 ModelReasoning）和实际输出（推送 ModelDelta）
+                // 提取 message.thinking（思考链增量，Ollama 0.17+ think 模式下与 content 同级）
+                if let Some(thinking) = value["message"]["thinking"].as_str() {
+                    if !thinking.is_empty() {
+                        // 思考链用长段落哈希检测：整段 200 字符完全相同才计数
+                        // 正常推导不会整段雷同，只有 Qwen3 那种几百字反复输出的循环才会触发
+                        if thinking_loop_detector.feed(thinking) {
+                            tracing::warn!(model = %self.model, "检测到 thinking 整段重复循环，主动中断");
+                            let _ = sink
+                                .send(crate::pipeline::StreamEvent::ModelLoopDetected { t: 0 })
+                                .await;
+                            loop_detected = true;
+                            break;
+                        }
+                        let _ = sink
+                            .send(crate::pipeline::StreamEvent::ModelReasoning {
+                                delta: thinking.to_string(),
+                                t: 0,
+                            })
+                            .await;
+                    }
+                }
+
+                // 提取 message.content（实际输出增量）
                 if let Some(content) = value["message"]["content"].as_str() {
                     if !content.is_empty() {
+                        // 循环检测：content 重复输出同一段内容时主动中断
+                        if content_loop_detector.feed(content) {
+                            tracing::warn!(model = %self.model, "检测到 content 输出循环，主动中断");
+                            let _ = sink
+                                .send(crate::pipeline::StreamEvent::ModelLoopDetected { t: 0 })
+                                .await;
+                            loop_detected = true;
+                            break;
+                        }
                         content_buf.push_str(content);
-                        // 把 content 喂进 thinking 解析状态机
                         thinking_parser.feed(content);
-                        // 取出解析出的实际输出增量
                         let output_delta = thinking_parser.take_output();
                         if !output_delta.is_empty() {
                             let _ = sink
@@ -453,7 +612,6 @@ impl OllamaClient {
                                 })
                                 .await;
                         }
-                        // 取出解析出的思考链增量
                         let reasoning_delta = thinking_parser.take_reasoning();
                         if !reasoning_delta.is_empty() {
                             let _ = sink
@@ -466,14 +624,29 @@ impl OllamaClient {
                     }
                 }
 
-                // 最后一个 chunk 包含 prompt_eval_count / eval_count
                 if let Some(pe) = value["prompt_eval_count"].as_u64() {
                     prompt_eval_count = pe as u32;
                 }
                 if let Some(ec) = value["eval_count"].as_u64() {
                     eval_count = ec as u32;
                 }
+                if let Some(v) = value["total_duration"].as_u64() { total_duration_ns = v; }
+                if let Some(v) = value["load_duration"].as_u64() { load_duration_ns = v; }
+                if let Some(v) = value["prompt_eval_duration"].as_u64() { prompt_eval_duration_ns = v; }
+                if let Some(v) = value["eval_duration"].as_u64() { eval_duration_ns = v; }
             }
+            if loop_detected {
+                break;
+            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if loop_detected {
+            tracing::info!(model = %self.model, "流式调用因循环检测提前终止，已接收 content {} 字符",
+                content_buf.chars().count());
         }
 
         // 流结束：刷出 thinking_parser 残余内容
@@ -551,6 +724,12 @@ impl OllamaClient {
             prompt_eval_count,
             eval_count,
             raw_response: raw_truncated,
+            timing: OllamaTiming {
+                total_duration_ns,
+                load_duration_ns,
+                prompt_eval_duration_ns,
+                eval_duration_ns,
+            },
         })
     }
 

@@ -7,11 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
-// 心跳推送间隔与阶段切换阈值（避免硬编码字面量散落代码中）
+// 心跳推送间隔（避免硬编码字面量散落代码中）
 const HEARTBEAT_INTERVAL_SEC: u64 = 10;
-const HB_OLLAMA_LOAD_TO_EVAL_SEC: u64 = 30;
-const HB_OLLAMA_EVAL_TO_GEN_SEC: u64 = 90;
-const HB_API_WAIT_SEC: u64 = 30;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct CompressOptions {
@@ -102,6 +99,9 @@ pub struct ModelCallDetail {
     pub success: bool,
     /// 失败原因（success=false 时有）
     pub error: Option<String>,
+    /// Ollama 性能统计（仅 ollama provider 有，OpenAI 兼容为 None）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timing: Option<crate::model::ollama::OllamaTiming>,
 }
 
 /// 完整运行日志
@@ -169,6 +169,8 @@ pub enum StreamEvent {
         input_chars: usize,
         system_prompt: String,
         user_prompt: String,
+        /// 模型是否已在内存（仅 ollama 有意义，false 表示首次需加载）
+        already_loaded: bool,
         t: u64,
     },
     /// 模型加载/推理中心跳事件：在 ModelStart 后到第一个 ModelDelta 之间周期性推送
@@ -198,6 +200,8 @@ pub enum StreamEvent {
         reasoning_tokens: u32,
         success: bool,
         error: Option<String>,
+        /// Ollama 性能统计（仅 ollama provider 有，OpenAI 兼容为 None）
+        timing: Option<crate::model::ollama::OllamaTiming>,
         t: u64,
     },
     Fallback {
@@ -212,6 +216,14 @@ pub enum StreamEvent {
     },
     Error {
         msg: String,
+        t: u64,
+    },
+    /// 用户主动取消（前端点"停止"按钮，POST /cancel 触发）
+    ModelAborted {
+        t: u64,
+    },
+    /// 检测到模型输出循环（N-gram 重复），后端主动中断
+    ModelLoopDetected {
         t: u64,
     },
 }
@@ -434,7 +446,7 @@ pub async fn compress(text: &str, opts: &CompressOptions) -> anyhow::Result<Comp
             }
             "ollama" | _ => {
                 crate::model::ollama::OllamaClient::new(&opts.model)
-                    .compress_full(&system, &user)
+                    .compress_full(&system, &user, reasoning)
                     .await
                     .map(ModelOutputKind::Ollama)
             }
@@ -444,7 +456,7 @@ pub async fn compress(text: &str, opts: &CompressOptions) -> anyhow::Result<Comp
 
         match model_result {
             Ok(out) => {
-                let (content_str, prompt_tokens, completion_tokens, reasoning_tokens, raw_response, reasoning_text) = match &out {
+                let (content_str, prompt_tokens, completion_tokens, reasoning_tokens, raw_response, reasoning_text, timing) = match &out {
                     ModelOutputKind::OpenAI(o) => (
                         o.content.clone(),
                         o.usage.prompt_tokens,
@@ -452,6 +464,7 @@ pub async fn compress(text: &str, opts: &CompressOptions) -> anyhow::Result<Comp
                         o.usage.reasoning_tokens,
                         o.raw_response.clone(),
                         o.reasoning_text.clone(),
+                        None,
                     ),
                     ModelOutputKind::Ollama(o) => (
                         o.content.clone(),
@@ -460,6 +473,7 @@ pub async fn compress(text: &str, opts: &CompressOptions) -> anyhow::Result<Comp
                         0u32,
                         o.raw_response.clone(),
                         None,
+                        Some(o.timing.clone()),
                     ),
                 };
 
@@ -483,6 +497,7 @@ pub async fn compress(text: &str, opts: &CompressOptions) -> anyhow::Result<Comp
                     reasoning_text,
                     success: true,
                     error: None,
+                    timing,
                 });
 
                 if improvement < 0.05 {
@@ -548,6 +563,7 @@ pub async fn compress(text: &str, opts: &CompressOptions) -> anyhow::Result<Comp
                     reasoning_text: None,
                     success: false,
                     error: Some(err_msg),
+                    timing: None,
                 });
                 let final_text = final_algo_pass(&algo_output, target_chars);
                 let final_len = final_text.chars().count();
@@ -623,10 +639,12 @@ pub enum ModelOutputKind {
 /// - 模型阶段调用流式客户端（见 model::openai_compat::compress_stream / model::ollama::compress_stream）
 /// - 支持 preset 预设提示词
 /// - 支持 text_algo 跳过算法阶段（用于重试）
+/// - cancel: 取消令牌，前端点"停止"按钮后通过 /cancel 接口触发 cancel.cancelled()
 pub async fn compress_stream(
     text: &str,
     opts: &CompressOptions,
     mut sink: LogSink,
+    cancel: tokio_util::sync::CancellationToken,
 ) -> anyhow::Result<CompressResult> {
     let start = Instant::now();
     let started_at = std::time::SystemTime::now()
@@ -869,22 +887,8 @@ pub async fn compress_stream(
             _ => "http://127.0.0.1:11434/api/chat".to_string(),
         };
 
-        let _ = sink
-            .send(StreamEvent::ModelStart {
-                provider: opts.provider.clone(),
-                model: opts.model.clone(),
-                reasoning_effort: reasoning.map(|s| s.to_string()),
-                input_chars: after_algo,
-                system_prompt: system.clone(),
-                user_prompt: user.clone(),
-                t: start.elapsed().as_millis() as u64,
-            })
-            .await;
-
-        let t1 = Instant::now();
-
-        // 启动心跳 task 前先查询 Ollama /api/ps 判断模型是否已加载到内存
-        // 已加载时跳过"模型加载中"阶段，避免第二次调用仍误导用户
+        // 推送 ModelStart 前先查询 Ollama /api/ps 判断模型是否已加载到内存
+        // 已加载时前端显示"模型已在内存"，未加载时显示"首次加载模型到内存"
         let already_loaded = if opts.provider == "ollama" {
             let client = crate::model::ollama::OllamaClient::new(&opts.model);
             match client.is_model_loaded().await {
@@ -902,46 +906,55 @@ pub async fn compress_stream(
             false
         };
 
+        let _ = sink
+            .send(StreamEvent::ModelStart {
+                provider: opts.provider.clone(),
+                model: opts.model.clone(),
+                reasoning_effort: reasoning.map(|s| s.to_string()),
+                input_chars: after_algo,
+                system_prompt: system.clone(),
+                user_prompt: user.clone(),
+                already_loaded,
+                t: start.elapsed().as_millis() as u64,
+            })
+            .await;
+
+        let t1 = Instant::now();
+
         // 启动心跳 task：在 ModelStart 后到 ModelDone 之间周期性推送 ModelHeartbeat
         // 让前端知道后端还活着、模型还在加载/推理，避免误以为卡死
         let (heartbeat_stop_tx, mut heartbeat_stop_rx) = mpsc::channel::<()>(1);
         let heartbeat_sink = sink.clone();
         let heartbeat_provider = opts.provider.clone();
-        let heartbeat_input = after_algo;
+        let heartbeat_reasoning = opts.reasoning_effort.clone();
         let heartbeat_start = t1;
         let heartbeat_handle = tokio::spawn(async move {
             // 第一个 tick 立即返回，跳过避免立即推送
             let mut interval = tokio::time::interval(Duration::from_secs(HEARTBEAT_INTERVAL_SEC));
             interval.tick().await;
+            // 心跳文案在启动时一次性确定，运行期间不随时间切换阶段（避免硬编码时间阈值）
+            // 前端已有 setInterval(1000) 每秒更新秒数，首个 ModelDelta/ModelReasoning 后停止心跳显示
+            let phase_prefix = if heartbeat_provider == "ollama" {
+                if already_loaded {
+                    if heartbeat_reasoning.as_deref() == Some("none") {
+                        "模型已加载·已关闭思考，等待响应中"
+                    } else {
+                        "模型已加载·thinking 模式会先思考再生成"
+                    }
+                } else {
+                    "首次加载模型到内存"
+                }
+            } else {
+                // deepseek / custom 远程 API
+                "等待 API 响应"
+            };
             loop {
                 tokio::select! {
                     biased;
                     _ = heartbeat_stop_rx.recv() => break,
                     _ = interval.tick() => {
                         let elapsed = heartbeat_start.elapsed().as_secs();
-                        // Ollama 本地模型三阶段提示：加载 → Prompt 评估 → 推理生成
-                        // 若模型已加载（第二次调用），跳过"加载中"阶段直接进入"评估中"
-                        let phase = if heartbeat_provider == "ollama" {
-                            let load_threshold = if already_loaded { 0 } else { HB_OLLAMA_LOAD_TO_EVAL_SEC };
-                            if elapsed < load_threshold {
-                                format!("模型加载中 · 已等 {}s（首次需把模型从磁盘加载到内存）", elapsed)
-                            } else if elapsed < HB_OLLAMA_EVAL_TO_GEN_SEC {
-                                if already_loaded && elapsed < HEARTBEAT_INTERVAL_SEC {
-                                    format!("模型已加载 · 开始推理（输入 {} 字逐 token 评估）", heartbeat_input)
-                                } else {
-                                    format!("Prompt 评估中 · 已等 {}s（输入 {} 字逐 token 评估）", elapsed, heartbeat_input)
-                                }
-                            } else {
-                                format!("推理生成中 · 已等 {}s（thinking 模式会先思考再生成，请耐心等）", elapsed)
-                            }
-                        } else {
-                            // deepseek / custom 远程 API
-                            if elapsed < HB_API_WAIT_SEC {
-                                format!("等待 API 响应 · 已等 {}s", elapsed)
-                            } else {
-                                format!("API 仍无响应 · 已等 {}s（可能网络慢或排队中）", elapsed)
-                            }
-                        };
+                        let phase = format!("{} · 已等 {}s", phase_prefix, elapsed);
                         let _ = heartbeat_sink
                             .send(StreamEvent::ModelHeartbeat {
                                 elapsed_ms: heartbeat_start.elapsed().as_millis() as u64,
@@ -954,32 +967,44 @@ pub async fn compress_stream(
             }
         });
 
-        let model_result: anyhow::Result<ModelOutputKind> = match opts.provider.as_str() {
-            "deepseek" => {
-                let key = opts.api_key.as_deref().unwrap_or("");
-                crate::model::openai_compat::OpenAiCompatClient::deepseek(key, &opts.model)
-                    .compress_stream(&system, &user, reasoning, &mut sink)
-                    .await
-                    .map(ModelOutputKind::OpenAI)
+        let model_result: anyhow::Result<ModelOutputKind> = tokio::select! {
+            biased;
+            _ = cancel.cancelled() => {
+                // 用户主动取消：推送 ModelAborted 事件，返回错误让上层走 fallback 逻辑
+                let _ = sink.send(StreamEvent::ModelAborted {
+                    t: start.elapsed().as_millis() as u64,
+                }).await;
+                Err(anyhow::anyhow!("用户取消"))
             }
-            "custom" => {
-                let base = opts.base_url.as_deref().unwrap_or("");
-                let key = opts.api_key.as_deref().unwrap_or("");
-                if base.is_empty() {
-                    Err(anyhow::anyhow!("自定义 provider 需提供 base_url"))
-                } else {
-                    crate::model::openai_compat::OpenAiCompatClient::from_base_url(base, key, &opts.model)
-                        .compress_stream(&system, &user, reasoning, &mut sink)
-                        .await
-                        .map(ModelOutputKind::OpenAI)
+            r = async {
+                match opts.provider.as_str() {
+                    "deepseek" => {
+                        let key = opts.api_key.as_deref().unwrap_or("");
+                        crate::model::openai_compat::OpenAiCompatClient::deepseek(key, &opts.model)
+                            .compress_stream(&system, &user, reasoning, &mut sink, cancel.clone())
+                            .await
+                            .map(ModelOutputKind::OpenAI)
+                    }
+                    "custom" => {
+                        let base = opts.base_url.as_deref().unwrap_or("");
+                        let key = opts.api_key.as_deref().unwrap_or("");
+                        if base.is_empty() {
+                            Err(anyhow::anyhow!("自定义 provider 需提供 base_url"))
+                        } else {
+                            crate::model::openai_compat::OpenAiCompatClient::from_base_url(base, key, &opts.model)
+                                .compress_stream(&system, &user, reasoning, &mut sink, cancel.clone())
+                                .await
+                                .map(ModelOutputKind::OpenAI)
+                        }
+                    }
+                    "ollama" | _ => {
+                        crate::model::ollama::OllamaClient::new(&opts.model)
+                            .compress_stream(&system, &user, reasoning, &mut sink, cancel.clone())
+                            .await
+                            .map(ModelOutputKind::Ollama)
+                    }
                 }
-            }
-            "ollama" | _ => {
-                crate::model::ollama::OllamaClient::new(&opts.model)
-                    .compress_stream(&system, &user, &mut sink)
-                    .await
-                    .map(ModelOutputKind::Ollama)
-            }
+            } => r,
         };
 
         // 停止心跳 task
@@ -990,7 +1015,7 @@ pub async fn compress_stream(
 
         match model_result {
             Ok(out) => {
-                let (content_str, prompt_tokens, completion_tokens, reasoning_tokens, raw_response, reasoning_text) = match &out {
+                let (content_str, prompt_tokens, completion_tokens, reasoning_tokens, raw_response, reasoning_text, timing) = match &out {
                     ModelOutputKind::OpenAI(o) => (
                         o.content.clone(),
                         o.usage.prompt_tokens,
@@ -998,6 +1023,7 @@ pub async fn compress_stream(
                         o.usage.reasoning_tokens,
                         o.raw_response.clone(),
                         o.reasoning_text.clone(),
+                        None,
                     ),
                     ModelOutputKind::Ollama(o) => (
                         o.content.clone(),
@@ -1006,6 +1032,7 @@ pub async fn compress_stream(
                         0u32,
                         o.raw_response.clone(),
                         None,
+                        Some(o.timing.clone()),
                     ),
                 };
 
@@ -1029,6 +1056,7 @@ pub async fn compress_stream(
                     reasoning_text,
                     success: true,
                     error: None,
+                    timing: timing.clone(),
                 });
 
                 let _ = sink
@@ -1040,6 +1068,7 @@ pub async fn compress_stream(
                         reasoning_tokens,
                         success: true,
                         error: None,
+                        timing,
                         t: start.elapsed().as_millis() as u64,
                     })
                     .await;
@@ -1096,6 +1125,50 @@ pub async fn compress_stream(
             }
             Err(e) => {
                 let err_msg = e.to_string();
+                // 用户主动取消：不触发 fallback，直接用算法输出作为最终结果
+                // ModelAborted 事件已在 select! 分支推送，这里不再推送 ModelDone/Fallback
+                if cancel.is_cancelled() {
+                    entries.push(LogEntry {
+                        t: start.elapsed().as_millis() as u64,
+                        level: "warn".to_string(),
+                        stage: "model".to_string(),
+                        msg: "用户主动取消，使用算法输出作为最终结果".to_string(),
+                    });
+                    // 推送 ModelDone（success=false 但 error=取消标记），让前端停止 spinner
+                    let _ = sink
+                        .send(StreamEvent::ModelDone {
+                            output_chars: 0,
+                            elapsed_ms: model_ms,
+                            prompt_tokens: 0,
+                            completion_tokens: 0,
+                            reasoning_tokens: 0,
+                            success: false,
+                            error: Some("用户取消".to_string()),
+                            timing: None,
+                            t: start.elapsed().as_millis() as u64,
+                        })
+                        .await;
+                    model_call = Some(ModelCallDetail {
+                        provider: opts.provider.clone(),
+                        model: opts.model.clone(),
+                        endpoint,
+                        reasoning_effort: reasoning.map(|s| s.to_string()),
+                        system_prompt: system,
+                        user_prompt: user,
+                        input_chars: after_algo,
+                        output_chars: 0,
+                        elapsed_ms: model_ms,
+                        prompt_tokens: 0,
+                        completion_tokens: 0,
+                        reasoning_tokens: 0,
+                        raw_response: String::new(),
+                        reasoning_text: None,
+                        success: false,
+                        error: Some("用户取消".to_string()),
+                        timing: None,
+                    });
+                    (algo_output.clone(), after_algo)
+                } else {
                 fallback_triggered = true;
                 let reason = format!("模型调用失败：{}", err_msg);
                 tracing::error!(
@@ -1121,6 +1194,7 @@ pub async fn compress_stream(
                         reasoning_tokens: 0,
                         success: false,
                         error: Some(err_msg.clone()),
+                        timing: None,
                         t: start.elapsed().as_millis() as u64,
                     })
                     .await;
@@ -1147,6 +1221,7 @@ pub async fn compress_stream(
                     reasoning_text: None,
                     success: false,
                     error: Some(err_msg),
+                    timing: None,
                 });
                 let final_text = final_algo_pass(&algo_output, target_chars);
                 let final_len = final_text.chars().count();
@@ -1157,6 +1232,7 @@ pub async fn compress_stream(
                     msg: format!("回退二次算法压缩：{} → {} 字", after_algo, final_len),
                 });
                 (final_text, final_len)
+                }
             }
         }
     };
