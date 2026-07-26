@@ -786,6 +786,9 @@
               <input type="password" id="apiKeyInput" placeholder="sk-... （仅存本机浏览器 localStorage）" style="width:100%;padding-right:38px" />
               <button type="button" id="btnToggleKey" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);cursor:pointer;padding:4px 6px;font-size:14px" title="显示/隐藏">👁</button>
             </div>
+          </div>
+          <div class="dc-row" id="reasoningRow">
+            <span class="dc-label">推理强度</span>
             <select id="reasoningSel" style="cursor:pointer" title="推理强度（仅部分厂商支持）">
               <option value="none">不思考</option>
               <option value="high" selected>高（默认）</option>
@@ -1486,6 +1489,10 @@
     $modelSel.disabled = isCustom || !state.useModel;
     // reasoning 提示：仅 deepseek 显示（V4 仅支持 high/max）
     if($reasoningHint) $reasoningHint.style.display = (p === 'deepseek') ? 'inline' : 'none';
+    // 卸载按钮：仅 ollama provider 显示（释放显存/内存）
+    if($btnUnloadModel){
+      $btnUnloadModel.style.display = (p === 'ollama') ? 'inline-block' : 'none';
+    }
     // 自定义 base_url 输入框联动
     if (isCustom) {
       $customBaseUrl.value = state.baseUrl || PROVIDER_BASE_URL.custom;
@@ -2236,6 +2243,7 @@
         $resultText.textContent = '（模型加载中… 算法阶段已完成，正在等待模型响应）';
         // 重置思考过程面板
         state.reasoningText = '';
+        state.firstDeltaReceived = false;  // 重置首次 delta 标志，避免心跳覆盖流式输出
         if($reasoningBody) $reasoningBody.textContent = '';
         if($reasoningCnt) $reasoningCnt.textContent = '0 字';
         if($reasoningPanel) $reasoningPanel.style.display = 'none';
@@ -2247,8 +2255,11 @@
           msg:'⏳ ' + hbPhase});
         $logSummary.innerHTML = hbPhase;
         $logSummary.classList.remove("err");
-        // 若 resultText 还是初始加载提示，更新为更具体的阶段提示
-        if($resultText.textContent.indexOf('模型加载中') === 0 || $resultText.textContent.indexOf('（模型') === 0){
+        // 仅在未收到首个 delta 时更新加载提示，避免覆盖流式输出
+        if(!state.firstDeltaReceived && (
+          $resultText.textContent.indexOf('模型加载中') === 0 ||
+          $resultText.textContent.indexOf('（模型') === 0
+        )){
           $resultText.textContent = '（' + hbPhase + '，请耐心等待…）';
         }
         break;
@@ -2269,9 +2280,10 @@
         $logSummary.classList.remove("warn","err");
         break;
       case "ModelDelta":
-        // 第一次收到 delta 时清空加载提示
-        if($resultText.textContent.indexOf('（模型') === 0 || $resultText.textContent.indexOf('模型加载中') === 0){
+        // 首次 delta：清空加载提示并置标志位，后续 delta 直接追加，避免被心跳覆盖
+        if(!state.firstDeltaReceived){
           $resultText.textContent = '';
+          state.firstDeltaReceived = true;
         }
         $resultText.textContent += (event.delta || '');
         // 更新顶部"模型输出中 · 已 N 字 · Mms"计数
@@ -2286,6 +2298,11 @@
         var reduction = inChars > 0 ? ((1 - outChars/inChars) * 100).toFixed(1) : 0;
         appendLogEntry({t:t, level:'info', stage:'model',
           msg:'模型完成：' + inChars + ' → ' + outChars + ' 字（耗时 ' + (event.elapsed_ms||0) + 'ms，缩短 ' + reduction + '%，prompt_tokens=' + (event.prompt_tokens||0) + ', completion_tokens=' + (event.completion_tokens||0) + '）'});
+        // trae 风格：思考完成自动折叠（用户仍可点击 btnToggleReasoning 展开）
+        if($reasoningPanel && $reasoningPanel.style.display === 'block'){
+          $reasoningPanel.classList.add('collapsed');
+          if($btnToggleReasoning) $btnToggleReasoning.textContent = '展开 ▾';
+        }
         stopModelTimer();
         break;
       case "Fallback":

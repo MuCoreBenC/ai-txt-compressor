@@ -7,6 +7,12 @@ use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
+// 心跳推送间隔与阶段切换阈值（避免硬编码字面量散落代码中）
+const HEARTBEAT_INTERVAL_SEC: u64 = 10;
+const HB_OLLAMA_LOAD_TO_EVAL_SEC: u64 = 30;
+const HB_OLLAMA_EVAL_TO_GEN_SEC: u64 = 90;
+const HB_API_WAIT_SEC: u64 = 30;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct CompressOptions {
     pub ratio: f32,
@@ -886,7 +892,7 @@ pub async fn compress_stream(
         let heartbeat_start = t1;
         let heartbeat_handle = tokio::spawn(async move {
             // 第一个 tick 立即返回，跳过避免立即推送
-            let mut interval = tokio::time::interval(Duration::from_secs(10));
+            let mut interval = tokio::time::interval(Duration::from_secs(HEARTBEAT_INTERVAL_SEC));
             interval.tick().await;
             loop {
                 tokio::select! {
@@ -894,18 +900,18 @@ pub async fn compress_stream(
                     _ = heartbeat_stop_rx.recv() => break,
                     _ = interval.tick() => {
                         let elapsed = heartbeat_start.elapsed().as_secs();
-                        // Ollama 本地模型三阶段提示：加载（<30s）→ prompt 评估（30-90s）→ 推理生成（>90s）
+                        // Ollama 本地模型三阶段提示：加载 → Prompt 评估 → 推理生成
                         let phase = if heartbeat_provider == "ollama" {
-                            if elapsed < 30 {
+                            if elapsed < HB_OLLAMA_LOAD_TO_EVAL_SEC {
                                 format!("模型加载中 · 已等 {}s（首次需把模型从磁盘加载到内存）", elapsed)
-                            } else if elapsed < 90 {
+                            } else if elapsed < HB_OLLAMA_EVAL_TO_GEN_SEC {
                                 format!("Prompt 评估中 · 已等 {}s（输入 {} 字逐 token 评估）", elapsed, heartbeat_input)
                             } else {
                                 format!("推理生成中 · 已等 {}s（thinking 模式会先思考再生成，请耐心等）", elapsed)
                             }
                         } else {
-                            // deepseek / custom 远程 API，通常 5-30 秒返回
-                            if elapsed < 30 {
+                            // deepseek / custom 远程 API
+                            if elapsed < HB_API_WAIT_SEC {
                                 format!("等待 API 响应 · 已等 {}s", elapsed)
                             } else {
                                 format!("API 仍无响应 · 已等 {}s（可能网络慢或排队中）", elapsed)
